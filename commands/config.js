@@ -56,21 +56,20 @@ module.exports = {
     .addSubcommand(sub => sub.setName('show').setDescription('Muestra la configuración actual del bot'))
     .addSubcommand(sub => sub.setName('setup_server').setDescription('Generador profesional de servidores con plantillas y roles'))
     .addSubcommand(sub =>
-      sub.setName('set').setDescription('Actualiza una opción rápida')
+      sub.setName('quick_edit').setDescription('Actualiza una opción rápida de texto o imagen')
         .addStringOption(o => o.setName('clave').setDescription('Opción a modificar').addChoices(
-            { name: 'prefix', value: 'prefix' },
-            { name: 'welcomeMessage', value: 'welcomeMessage' },
-            { name: 'welcomeBackground', value: 'welcomeBackground' }
+            { name: 'Prefijo', value: 'prefix' },
+            { name: 'Mensaje de Bienvenida', value: 'welcomeMessage' },
+            { name: 'Fondo de Bienvenida (URL)', value: 'welcomeBackground' }
         ).setRequired(true))
         .addStringOption(o => o.setName('valor').setDescription('Nuevo valor').setRequired(true)))
-    .addSubcommand(sub => sub.setName('reset').setDescription('Restaura los valores de configuración por defecto'))
-    .addSubcommand(sub => sub.setName('interactive').setDescription('Panel visual para configurar módulos del bot'))
+    .addSubcommand(sub => sub.setName('panel').setDescription('Panel visual para configurar módulos (Canales, Roles, etc.)'))
     .addSubcommand(sub => sub.setName('rules').setDescription('Configura las reglas oficiales').addStringOption(o => o.setName('contenido').setDescription('Contenido de las reglas').setRequired(true)))
     .addSubcommand(sub => sub.setName('view_rules').setDescription('Visualiza las reglas actuales'))
-    .addSubcommand(sub => sub.setName('role_panel').setDescription('Crea un panel de auto-roles'))
-    .addSubcommand(sub => sub.setName('level_rewards').setDescription('Configura roles por nivel')
+    .addSubcommand(sub => sub.setName('rewards').setDescription('Configura roles por nivel')
         .addIntegerOption(o => o.setName('nivel').setDescription('Nivel requerido').setRequired(true))
-        .addRoleOption(o => o.setName('rol').setDescription('Rol a entregar').setRequired(true))),
+        .addRoleOption(o => o.setName('rol').setDescription('Rol a entregar').setRequired(true)))
+    .addSubcommand(sub => sub.setName('reset').setDescription('Restaura los valores de configuración por defecto')),
 
   async execute(interaction) {
     const guildId = interaction.guild?.id;
@@ -81,9 +80,8 @@ module.exports = {
 
     try {
       switch (sub) {
-        case 'setup_server': {
+        case 'setup_server':
             return handleServerSetup(interaction);
-        }
 
         case 'show': {
           const levelNames = { 1: 'Moderación', 2: 'Miembros', 3: 'Actividad' };
@@ -94,7 +92,7 @@ module.exports = {
                   { name: '📊 Nivel Logs', value: `\`Nivel ${config.logLevel || 1} (${levelNames[config.logLevel || 1]})\``, inline: true },
                   { name: '👤 Rol Automático', value: config.autoRoleId ? `<@&${config.autoRoleId}>` : '`No configurado`', inline: true },
                   { name: '🖼️ Fondo Bienvenida', value: config.welcomeBackground ? `[Ver Imagen](${config.welcomeBackground})` : '`Por defecto`', inline: true },
-                  { name: '👋 Bienvenida', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '`Canal no configurado`', inline: true },
+                  { name: '👋 Canal Bienvenida', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '`No configurado`', inline: true },
                   { name: '📜 Mensaje', value: `\`${config.welcomeMessage}\``, inline: false }
               ],
               thumbnail: interaction.guild.iconURL({ dynamic: true })
@@ -102,19 +100,23 @@ module.exports = {
           return interaction.reply({ embeds: [embed] });
         }
 
-        case 'set': {
+        case 'quick_edit': {
           const key = interaction.options.getString('clave', true);
           const val = interaction.options.getString('valor', true);
+          
           if (key === 'prefix') config.prefix = val.slice(0, 5);
           else if (key === 'welcomeMessage') config.welcomeMessage = val.slice(0, 300);
           else if (key === 'welcomeBackground') {
-            if (!val.startsWith('http')) return interaction.reply({ content: 'Debes proporcionar una URL válida para la imagen.', flags: [MessageFlags.Ephemeral] });
+            if (!val.startsWith('http')) return interaction.reply({ content: '❌ Debes proporcionar una URL válida para la imagen.', flags: [MessageFlags.Ephemeral] });
             config.welcomeBackground = val;
           }
           
           await DataManager.saveFile(`configs/${guildId}.json`, config);
-          return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada a \`${val}\`.`)] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada correctamente.`)] });
         }
+
+        case 'panel':
+            return handleInteractiveSetup(interaction, config, guildId);
 
         case 'rules': {
           config.rules = interaction.options.getString('contenido').replace(/\\n/g, '\n');
@@ -122,13 +124,8 @@ module.exports = {
           return interaction.reply({ embeds: [createEmbed('success', 'Reglas Guardadas', 'Usa `/config view_rules` para verlas.')] });
         }
 
-        case 'view_rules': {
+        case 'view_rules':
           return interaction.reply({ embeds: [createEmbed('info', '📜 REGLAS DEL SERVIDOR', config.rules, { footer: interaction.guild.name, thumbnail: interaction.guild.iconURL({ dynamic: true }) })] });
-        }
-
-        case 'interactive': {
-            return handleInteractiveSetup(interaction, config, guildId);
-        }
 
         case 'reset': {
           await DataManager.saveFile(`configs/${guildId}.json`, defaultConfig);
@@ -233,7 +230,6 @@ async function startFlow(interaction) {
                 { label: 'Plantilla Base Moderna', value: 'base', emoji: '✨' }
             ]);
 
-        // REFACTOR: Usamos editReply en lugar de followUp para mantener el mismo mensaje efímero
         await interaction.editReply({ 
             embeds: [createEmbed('info', '📂 Plantilla para: ' + projectName, 'Selecciona el estilo de tu servidor.')], 
             components: [
@@ -289,7 +285,6 @@ async function createStructure(guild, template, projectName) {
     const roles = [], channels = [], categories = [];
     const createdRoles = {};
 
-    // 1. Crear Roles con colores y permisos
     for (const rData of template.roles) {
         const role = await guild.roles.create({ 
             name: rData.name, 
@@ -302,37 +297,21 @@ async function createStructure(guild, template, projectName) {
         roles.push(role.id);
     }
 
-    // 2. Crear Estructura
     for (const catData of template.structure) {
         const overwrites = [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }];
-        
-        // Añadir permisos de Staff a categorías privadas
         if (catData.private) {
             const staffRoles = template.roles.filter(r => r.staff).map(r => createdRoles[r.name]);
-            staffRoles.forEach(r => {
-                if (r) overwrites.push({ id: r.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages] });
-            });
+            staffRoles.forEach(r => { if (r) overwrites.push({ id: r.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages] }); });
         }
 
-        const cat = await guild.channels.create({ 
-            name: catData.name, 
-            type: ChannelType.GuildCategory, 
-            permissionOverwrites: catData.private ? overwrites : [] 
-        });
+        const cat = await guild.channels.create({ name: catData.name, type: ChannelType.GuildCategory, permissionOverwrites: catData.private ? overwrites : [] });
         categories.push(cat.id);
 
         for (const chanData of catData.channels) {
             const cName = typeof chanData === 'string' ? chanData : chanData.name;
-            const cType = chanData.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-            
-            const chan = await guild.channels.create({ 
-                name: cName, 
-                type: cType, 
-                parent: cat.id,
-                topic: chanData.topic || `Canal de ${projectName}`
-            });
+            const cType = catData.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
+            const chan = await guild.channels.create({ name: cName, type: cType, parent: cat.id, topic: chanData.topic || `Canal de ${projectName}` });
             channels.push(chan.id);
-
             if (cName === 'reglas' || cName === 'normas') {
                 await chan.send({ embeds: [createEmbed('info', '📜 Normas', `Bienvenido a **${projectName}**. Por favor lee las reglas.`)] }).then(m => m.pin());
             }
@@ -345,100 +324,90 @@ function getTemplates(projectName) {
     const adminPerms = [PermissionFlagsBits.Administrator];
     const modPerms = [PermissionFlagsBits.ManageMessages, PermissionFlagsBits.KickMembers, PermissionFlagsBits.BanMembers, PermissionFlagsBits.ModerateMembers];
     const userPerms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak];
-
     return {
-        casual: {
-            roles: [
-                { name: '👑 Fundador', perms: adminPerms, color: '#e74c3c', staff: true },
-                { name: '🛡️ Moderador', perms: modPerms, color: '#2ecc71', staff: true },
-                { name: '⭐ VIP', perms: userPerms, color: '#f1c40f' },
-                { name: '👤 Miembro', perms: userPerms, color: '#99aab5' }
-            ],
-            structure: [
-                { name: '📌 INFORMACIÓN', channels: [{ name: 'reglas', topic: 'Normas del servidor' }, 'anuncios', 'roles'] },
-                { name: '💬 COMUNIDAD', channels: ['general', 'fotos', 'memes', 'comandos'] },
-                { name: '🎮 GAMING', channels: ['busco-partida', 'clips-de-juego'] },
-                { name: '🔊 SALAS DE VOZ', type: 'voice', channels: ['General', 'Gaming 1', 'Gaming 2', 'Música'] },
-                { name: '📊 ADMINISTRACIÓN', private: true, channels: ['staff-chat', 'logs-servidor'] }
-            ]
-        },
-        streamer: {
-            roles: [
-                { name: '🎥 Streamer', perms: adminPerms, color: '#9b59b6', staff: true },
-                { name: '🛠️ Mod de Elite', perms: modPerms, color: '#2ecc71', staff: true },
-                { name: '💎 Suscriptor', perms: userPerms, color: '#f1c40f' },
-                { name: '🔔 Notificaciones', perms: userPerms, color: '#3498db' }
-            ],
-            structure: [
-                { name: '📺 DIRECTOS', channels: ['avisos-en-vivo', 'sugerencias-stream', 'momentos-top'] },
-                { name: '💬 COMUNIDAD', channels: ['general', 'fan-arts', 'off-topic', 'redes-sociales'] },
-                { name: '🔊 SALAS VIP', type: 'voice', channels: ['Charla con el Streamer', 'Gaming con Subs'] },
-                { name: '📊 STAFF', private: true, channels: ['mod-chat', 'anuncios-staff'] }
-            ]
-        },
-        gamedev: {
-            roles: [
-                { name: '👑 Director', perms: adminPerms, color: '#e67e22', staff: true },
-                { name: '🛠️ Desarrollador', perms: modPerms, color: '#3498db', staff: true },
-                { name: '🎨 Artista', perms: userPerms, color: '#e91e63' },
-                { name: '🧪 Tester', perms: userPerms, color: '#1abc9c' }
-            ],
-            structure: [
-                { name: '📢 DEVLOGS', channels: ['noticias-dev', 'roadmap', 'changelog'] },
-                { name: '💻 DESARROLLO', private: true, channels: ['bugs-reportes', 'sistemas', 'diseno-nivel'] },
-                { name: '🎨 CREATIVO', channels: ['arte-galeria', 'sonido-musica'] },
-                { name: '🧪 TESTING', channels: ['feedback-testers', 'bugs-publicos'] }
-            ]
-        },
-        partnership: {
-            roles: [
-                { name: '👑 CEO', perms: adminPerms, color: '#000000', staff: true },
-                { name: '🤝 Partner Manager', perms: modPerms, color: '#2ecc71', staff: true },
-                { name: '💎 Partner VIP', perms: userPerms, color: '#f1c40f' }
-            ],
-            structure: [
-                { name: '📜 INFO', channels: ['normas', 'anuncios', 'alianzas-info'] },
-                { name: '🤝 ALIANZAS', channels: ['nuestras-alianzas', 'tus-alianzas', 'alianzas-pendientes'] },
-                { name: '💬 CHAT', channels: ['general', 'comandos-bot'] }
-            ]
-        },
-        base: {
-            roles: [
-                { name: 'Admin', perms: adminPerms, color: '#000000', staff: true },
-                { name: 'Mod', perms: modPerms, color: '#2ecc71', staff: true },
-                { name: 'User', perms: userPerms, color: '#99aab5' }
-            ],
-            structure: [
-                { name: 'General', channels: ['bienvenida', 'reglas', 'chat-general'] },
-                { name: 'Voz', type: 'voice', channels: ['Salón 1', 'Salón 2'] },
-                { name: 'Admin', private: true, channels: ['staff-chat', 'logs'] }
-            ]
-        }
+        casual: { roles: [{ name: '👑 Fundador', perms: adminPerms, color: '#e74c3c', staff: true }, { name: '🛡️ Moderador', perms: modPerms, color: '#2ecc71', staff: true }, { name: '👤 Miembro', perms: userPerms, color: '#99aab5' }], structure: [{ name: '📌 INFORMACIÓN', channels: ['reglas', 'anuncios'] }, { name: '💬 COMUNIDAD', channels: ['general', 'fotos'] }, { name: '🔊 VOZ', type: 'voice', channels: ['General', 'Gaming'] }] },
+        streamer: { roles: [{ name: '🎥 Streamer', perms: adminPerms, color: '#9b59b6', staff: true }, { name: '🛠️ Mod', perms: modPerms, color: '#2ecc71', staff: true }, { name: '💎 Sub', perms: userPerms, color: '#f1c40f' }], structure: [{ name: '📺 LIVE', channels: ['avisos-en-vivo', 'sugerencias'] }, { name: '💬 COMUNIDAD', channels: ['general', 'off-topic'] }, { name: '🔊 VOZ', type: 'voice', channels: ['Charla', 'Gaming'] }] },
+        gamedev: { roles: [{ name: '👑 CEO', perms: adminPerms, color: '#e67e22', staff: true }, { name: '🛠️ Dev', perms: modPerms, color: '#3498db', staff: true }, { name: '🧪 Tester', perms: userPerms, color: '#1abc9c' }], structure: [{ name: '📢 DEVLOGS', channels: ['noticias', 'roadmap'] }, { name: '💻 INTERNO', private: true, channels: ['bugs', 'codigo'] }] },
+        partnership: { roles: [{ name: '👑 CEO', perms: adminPerms, color: '#000000', staff: true }, { name: '🤝 Manager', perms: modPerms, color: '#2ecc71', staff: true }], structure: [{ name: '📜 INFO', channels: ['normas', 'anuncios'] }, { name: '🤝 ALIANZAS', channels: ['nuestras-alianzas', 'tus-alianzas'] }] },
+        base: { roles: [{ name: 'Admin', perms: adminPerms, color: '#000000', staff: true }, { name: 'Mod', perms: modPerms, color: '#2ecc71', staff: true }, { name: 'User', perms: userPerms, color: '#99aab5' }], structure: [{ name: 'General', channels: ['bienvenida', 'chat'] }, { name: 'Admin', private: true, channels: ['staff-chat', 'logs'] }] }
     };
 }
 
 async function handleInteractiveSetup(interaction, config, guildId) {
-    const menu = new StringSelectMenuBuilder().setCustomId('menu').setPlaceholder('Elige un módulo')
+    const menu = new StringSelectMenuBuilder().setCustomId('cfg_menu').setPlaceholder('Elige un módulo para configurar')
         .addOptions([
-            { label: 'Logs', value: 'log', description: 'Canal y nivel de registros.' },
-            { label: 'Bienvenidas', value: 'welcome', description: 'Canal de entrada.' },
-            { label: 'Auto-Rol', value: 'autorole', description: 'Rol al unirse.' }
+            { label: 'Canal de Logs', value: 'log', emoji: '📝' },
+            { label: 'Canal de Bienvenidas', value: 'welcome', emoji: '👋' },
+            { label: 'Rol Automático', value: 'autorole', emoji: '👤' },
+            { label: 'Cerrar Panel', value: 'close', emoji: '❌' }
         ]);
 
-    const res = await interaction.reply({ embeds: [createEmbed('info', 'Panel Interactivo', 'Configura los módulos del bot visualmente.')], components: [new ActionRowBuilder().addComponents(menu)], flags: [MessageFlags.Ephemeral], withResponse: true });
-    const collector = res.resource?.message.createMessageComponentCollector({ componentType: ComponentType.StringSelect, time: 60000 });
+    const row = new ActionRowBuilder().addComponents(menu);
+    const response = await interaction.reply({ 
+        embeds: [createEmbed('info', '⚙️ Panel de Configuración', 'Selecciona una opción para configurar los canales y roles del bot.')], 
+        components: [row], 
+        flags: [MessageFlags.Ephemeral], 
+        withResponse: true 
+    });
+
+    const collector = response.resource?.message.createMessageComponentCollector({ time: 120000 });
 
     collector.on('collect', async i => {
-        const val = i.values[0];
-        if (val === 'log') {
-            const sel = new ChannelSelectMenuBuilder().setCustomId('c').setPlaceholder('Elige canal de logs').addChannelTypes([ChannelType.GuildText]);
-            await i.reply({ content: 'Selecciona el canal:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
-        } else if (val === 'welcome') {
-            const sel = new ChannelSelectMenuBuilder().setCustomId('w').setPlaceholder('Elige canal de bienvenidas').addChannelTypes([ChannelType.GuildText]);
-            await i.reply({ content: 'Selecciona el canal:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
-        } else if (val === 'autorole') {
-            const sel = new RoleSelectMenuBuilder().setCustomId('r').setPlaceholder('Elige rol automático');
-            await i.reply({ content: 'Selecciona el rol:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
+        if (i.user.id !== interaction.user.id) return i.reply({ content: 'No puedes usar este panel.', flags: [MessageFlags.Ephemeral] });
+
+        try {
+            if (i.customId === 'cfg_menu') {
+                const val = i.values[0];
+                if (val === 'close') {
+                    await i.update({ embeds: [createEmbed('success', 'Panel Cerrado', 'Configuración finalizada.')], components: [] });
+                    return collector.stop();
+                }
+
+                let component;
+                let text = '';
+
+                if (val === 'log') {
+                    text = 'Selecciona el canal para los **Logs**:';
+                    component = new ChannelSelectMenuBuilder().setCustomId('sel_log').setPlaceholder('Elegir canal').addChannelTypes([ChannelType.GuildText]);
+                } else if (val === 'welcome') {
+                    text = 'Selecciona el canal para las **Bienvenidas**:';
+                    component = new ChannelSelectMenuBuilder().setCustomId('sel_welcome').setPlaceholder('Elegir canal').addChannelTypes([ChannelType.GuildText]);
+                } else if (val === 'autorole') {
+                    text = 'Selecciona el **Rol Automático** para nuevos miembros:';
+                    component = new RoleSelectMenuBuilder().setCustomId('sel_role').setPlaceholder('Elegir rol');
+                }
+
+                await i.update({ 
+                    content: text, 
+                    embeds: [], 
+                    components: [new ActionRowBuilder().addComponents(component), new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Volver al Menú').setStyle(ButtonStyle.Secondary))] 
+                });
+            } else if (i.customId === 'cfg_back') {
+                await i.update({ content: '', embeds: [createEmbed('info', '⚙️ Panel de Configuración', 'Selecciona una opción para configurar.')], components: [row] });
+            } else if (i.customId === 'sel_log' || i.isChannelSelectMenu()) {
+                if (i.customId === 'sel_log') {
+                    config.logChannelId = i.values[0];
+                    await DataManager.saveFile(`configs/${guildId}.json`, config);
+                    await i.update({ content: `✅ Canal de logs guardado: <#${config.logChannelId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
+                } else if (i.customId === 'sel_welcome') {
+                    config.welcomeChannelId = i.values[0];
+                    await DataManager.saveFile(`configs/${guildId}.json`, config);
+                    await i.update({ content: `✅ Canal de bienvenidas guardado: <#${config.welcomeChannelId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
+                }
+            } else if (i.customId === 'sel_role' || i.isRoleSelectMenu()) {
+                config.autoRoleId = i.values[0];
+                await DataManager.saveFile(`configs/${guildId}.json`, config);
+                await i.update({ content: `✅ Rol automático guardado: <@&${config.autoRoleId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
+            }
+        } catch (err) {
+            console.error('Error en el panel interactivo:', err);
+            if (!i.replied && !i.deferred) {
+                await i.reply({ content: '❌ Hubo un error procesando tu selección.', flags: [MessageFlags.Ephemeral] }).catch(() => {});
+            }
         }
+    });
+
+    collector.on('end', () => {
+        interaction.editReply({ components: [] }).catch(() => {});
     });
 }

@@ -59,21 +59,32 @@ async function generateWelcomeImage(avatarUrl, username, serverName, backgroundU
 
     // 3. Dibujar Texto
     ctx.textAlign = 'center';
+    
+    // Sombra para el texto
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
+
+    // "BIENVENID@"
+    ctx.font = 'bold 50px sans-serif';
     ctx.fillStyle = '#ffffff';
+    ctx.fillText('BIENVENID@', 400, 230);
 
-    // "BIENVENIDO/A"
-    ctx.font = 'bold 45px sans-serif';
-    ctx.fillText('BIENVENID@', 400, 220);
-
-    // Nombre de Usuario (con color destacado)
-    ctx.font = 'bold 55px sans-serif';
+    // Nombre de Usuario (con color destacado y borde)
+    ctx.font = 'bold 65px sans-serif';
     ctx.fillStyle = '#00fbff';
-    ctx.fillText(username.toUpperCase(), 400, 285);
+    ctx.fillText(username.toUpperCase(), 400, 295);
+    
+    // Resetear sombra para texto pequeño
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     // Servidor o Mensaje Extra
-    ctx.font = '25px sans-serif';
+    ctx.font = 'italic 28px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`DISFRUTA TU ESTANCIA EN ${serverName.toUpperCase()}`, 400, 325);
+    ctx.fillText(serverName.toUpperCase(), 400, 335);
 
     return canvas.toBuffer('image/png');
 }
