@@ -66,7 +66,7 @@ module.exports = {
                 inline: false 
             }
         ],
-        thumbnail: client.user.displayAvatarURL(),
+        thumbnail: interaction.client.user.displayAvatarURL(),
         footer: `Prefijo: ${prefix} | Usa /comando para más detalles`
     });
 
@@ -77,7 +77,7 @@ module.exports = {
             .setStyle(ButtonStyle.Primary)
             .setEmoji('⌨️'),
         new ButtonBuilder()
-            .setURL('https://top.gg/bot/' + client.user.id) // Enlace dinámico a Top.gg
+            .setURL('https://top.gg/bot/' + interaction.client.user.id) // Enlace dinámico a Top.gg
             .setLabel('Votar en Top.gg')
             .setStyle(ButtonStyle.Link)
             .setEmoji('💎')
