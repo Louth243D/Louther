@@ -19,13 +19,18 @@ module.exports = {
         }
 
         // --- SISTEMA DE COOLDOWNS GLOBAL ---
+        // Eximir a los Administradores de los cooldowns
+        const isAdmin = interaction.member?.permissions.has(PermissionFlagsBits.Administrator);
         const cooldownAmount = (command.cooldown || 3) * 1000; // Por defecto 3s
-        const remaining = checkCooldown(interaction.user.id, interaction.commandName, cooldownAmount);
         
-        if (remaining) {
-          const waitTime = (remaining / 1000).toFixed(1);
-          const cooldownEmbed = createEmbed('warn', '⏳ ¡Espera un poco!', `Por favor, espera **${waitTime}s** antes de volver a usar \`/${interaction.commandName}\`.\n\n*Esto evita el spam y ayuda al rendimiento del bot.*`);
-          return interaction.reply({ embeds: [cooldownEmbed], flags: [MessageFlags.Ephemeral] });
+        if (!isAdmin) {
+          const remaining = checkCooldown(interaction.user.id, interaction.commandName, cooldownAmount);
+          
+          if (remaining) {
+            const waitTime = (remaining / 1000).toFixed(1);
+            const cooldownEmbed = createEmbed('warn', '⏳ ¡Espera un poco!', `Por favor, espera **${waitTime}s** antes de volver a usar \`/${interaction.commandName}\`.\n\n*Esto evita el spam y ayuda al rendimiento del bot.*`);
+            return interaction.reply({ embeds: [cooldownEmbed], flags: [MessageFlags.Ephemeral] });
+          }
         }
 
         return await command.execute(interaction);
