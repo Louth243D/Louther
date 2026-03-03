@@ -226,13 +226,25 @@ async function startFlow(interaction) {
                 { label: 'Plantilla Base Moderna', value: 'base', emoji: '✨' }
             ]);
 
-        await interaction.followUp({ 
+        // REFACTOR: Usamos editReply en lugar de followUp para mantener el mismo mensaje efímero
+        await interaction.editReply({ 
             embeds: [createEmbed('info', '📂 Plantilla para: ' + projectName, 'Selecciona el estilo de tu servidor.')], 
-            components: [new ActionRowBuilder().addComponents(select)], 
+            components: [
+                new ActionRowBuilder().addComponents(select),
+                new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('flow_cancel').setLabel('Cancelar').setStyle(ButtonStyle.Danger))
+            ], 
             flags: [MessageFlags.Ephemeral]
-        }).then(res => {
-            const col = res.createMessageComponentCollector({ componentType: ComponentType.StringSelect, time: 30000 });
-            col.on('collect', async i => {
+        });
+
+        const menuCol = flowMsg.createMessageComponentCollector({ time: 30000 });
+        
+        menuCol.on('collect', async i => {
+            if (i.customId === 'flow_cancel') {
+                await i.update({ embeds: [createEmbed('error', 'Proceso Cancelado', 'Has cancelado la creación del servidor.')], components: [] });
+                return menuCol.stop();
+            }
+
+            if (i.isStringSelect()) {
                 const type = i.values[0];
                 const templates = getTemplates(projectName);
                 const template = templates[type];
@@ -243,22 +255,25 @@ async function startFlow(interaction) {
                         new ButtonBuilder().setCustomId('confirm').setLabel('Confirmar').setStyle(ButtonStyle.Success),
                         new ButtonBuilder().setCustomId('cancel').setLabel('Cancelar').setStyle(ButtonStyle.Danger)
                     )]
-                }).then(confirmRes => {
-                    const btnCol = confirmRes.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
-                    btnCol.on('collect', async bi => {
-                        if (bi.customId === 'cancel') return bi.update({ content: 'Cancelado.', embeds: [], components: [] });
-                        await bi.update({ embeds: [createEmbed('info', '⚙️ Creando...', 'Generando estructura profesional completa...') ], components: [] });
-                        
-                        const results = await createStructure(interaction.guild, template, projectName);
-                        
-                        const finalGenData = readGenData();
-                        finalGenData[interaction.guild.id] = { projectName, type, createdAt: Date.now(), ...results };
-                        writeGenData(finalGenData);
-
-                        await bi.editReply({ embeds: [createEmbed('success', '✨ Servidor Listo', `Estructura de **${projectName}** generada con éxito.`)] });
-                    });
                 });
-            });
+
+                const btnColFinal = flowMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000, max: 1 });
+                btnColFinal.on('collect', async bi => {
+                    if (bi.customId === 'cancel') {
+                        return bi.update({ embeds: [createEmbed('error', 'Proceso Cancelado', 'Has cancelado la creación.')], components: [] });
+                    }
+                    
+                    await bi.update({ embeds: [createEmbed('info', '⚙️ Creando...', 'Generando estructura profesional completa...') ], components: [] });
+                    
+                    const results = await createStructure(interaction.guild, template, projectName);
+                    
+                    const finalGenData = readGenData();
+                    finalGenData[interaction.guild.id] = { projectName, type, createdAt: Date.now(), ...results };
+                    writeGenData(finalGenData);
+
+                    await bi.editReply({ embeds: [createEmbed('success', '✨ Servidor Listo', `Estructura de **${projectName}** generada con éxito.`)] });
+                });
+            }
         });
     });
 }
