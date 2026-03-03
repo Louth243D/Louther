@@ -97,7 +97,7 @@ module.exports = {
               ],
               thumbnail: interaction.guild.iconURL({ dynamic: true })
           });
-          return interaction.reply({ embeds: [embed] });
+          return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         case 'quick_edit': {
@@ -112,7 +112,7 @@ module.exports = {
           }
           
           await DataManager.saveFile(`configs/${guildId}.json`, config);
-          return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada correctamente.`)] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada correctamente.`)], flags: [MessageFlags.Ephemeral] });
         }
 
         case 'panel':
@@ -121,15 +121,26 @@ module.exports = {
         case 'rules': {
           config.rules = interaction.options.getString('contenido').replace(/\\n/g, '\n');
           await DataManager.saveFile(`configs/${guildId}.json`, config);
-          return interaction.reply({ embeds: [createEmbed('success', 'Reglas Guardadas', 'Usa `/config view_rules` para verlas.')] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Reglas Guardadas', 'Usa `/config view_rules` para verlas.')], flags: [MessageFlags.Ephemeral] });
         }
 
         case 'view_rules':
-          return interaction.reply({ embeds: [createEmbed('info', '📜 REGLAS DEL SERVIDOR', config.rules, { footer: interaction.guild.name, thumbnail: interaction.guild.iconURL({ dynamic: true }) })] });
+          return interaction.reply({ embeds: [createEmbed('info', '📜 REGLAS DEL SERVIDOR', config.rules, { footer: interaction.guild.name, thumbnail: interaction.guild.iconURL({ dynamic: true }) })], flags: [MessageFlags.Ephemeral] });
+
+        case 'rewards': {
+          const level = interaction.options.getInteger('nivel', true);
+          const role = interaction.options.getRole('rol', true);
+          
+          if (!config.levelRewards) config.levelRewards = {};
+          config.levelRewards[level] = role.id;
+          
+          await DataManager.saveFile(`configs/${guildId}.json`, config);
+          return interaction.reply({ embeds: [createEmbed('success', 'Recompensa Guardada', `Se ha asignado el rol <@&${role.id}> para el nivel **${level}**.`)], flags: [MessageFlags.Ephemeral] });
+        }
 
         case 'reset': {
           await DataManager.saveFile(`configs/${guildId}.json`, defaultConfig);
-          return interaction.reply({ embeds: [createEmbed('success', 'Configuración Reiniciada', 'Todos los valores han vuelto a su estado original.')] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Configuración Reiniciada', 'Todos los valores han vuelto a su estado original.')], flags: [MessageFlags.Ephemeral] });
         }
 
         default:
@@ -384,17 +395,18 @@ async function handleInteractiveSetup(interaction, config, guildId) {
                 });
             } else if (i.customId === 'cfg_back') {
                 await i.update({ content: '', embeds: [createEmbed('info', '⚙️ Panel de Configuración', 'Selecciona una opción para configurar.')], components: [row] });
-            } else if (i.customId === 'sel_log' || i.isChannelSelectMenu()) {
+            } else if (i.isChannelSelectMenu()) {
+                const val = i.values[0];
                 if (i.customId === 'sel_log') {
-                    config.logChannelId = i.values[0];
+                    config.logChannelId = val;
                     await DataManager.saveFile(`configs/${guildId}.json`, config);
                     await i.update({ content: `✅ Canal de logs guardado: <#${config.logChannelId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
                 } else if (i.customId === 'sel_welcome') {
-                    config.welcomeChannelId = i.values[0];
+                    config.welcomeChannelId = val;
                     await DataManager.saveFile(`configs/${guildId}.json`, config);
                     await i.update({ content: `✅ Canal de bienvenidas guardado: <#${config.welcomeChannelId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
                 }
-            } else if (i.customId === 'sel_role' || i.isRoleSelectMenu()) {
+            } else if (i.isRoleSelectMenu()) {
                 config.autoRoleId = i.values[0];
                 await DataManager.saveFile(`configs/${guildId}.json`, config);
                 await i.update({ content: `✅ Rol automático guardado: <@&${config.autoRoleId}>`, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
