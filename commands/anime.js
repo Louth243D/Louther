@@ -20,6 +20,7 @@ function saveStats(stats) {
 }
 
 module.exports = {
+    cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('anime')
         .setDescription('Comandos de interacción anime')

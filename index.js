@@ -14,7 +14,7 @@ if (Number.isFinite(nodeMajor) && nodeMajor < 20) {
 // Verificación del Token de Discord
 const token = process.env.DISCORD_TOKEN;
 if (!token || token === 'YOUR_BOT_TOKEN_HERE') {
-  console.error('Error: El DISCORD_TOKEN no está configurado. Por favor, añádelo al archivo .env dentro de la carpeta /bot.');
+  console.error('Error: DISCORD_TOKEN no está configurado. Configúralo como variable de entorno (p. ej. en Railway) o en un archivo .env en la raíz del proyecto.');
   process.exit(1);
 }
 

@@ -16,6 +16,7 @@ const defaultEconomyData = {
 };
 
 module.exports = {
+    cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('rpg')
         .setDescription('Comandos de rol y progreso')

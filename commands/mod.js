@@ -22,6 +22,7 @@ async function isStaff(member) {
 }
 
 module.exports = {
+    cooldown: 3,
     data: new SlashCommandBuilder()
         .setName('mod')
         .setDescription('Comandos de moderación general')

@@ -44,6 +44,16 @@ module.exports = {
         }
 
         if (command) {
+            // --- SISTEMA DE COOLDOWNS GLOBAL (PREFIJO) ---
+            const cooldownAmount = (command.cooldown || 3) * 1000;
+            const remaining = checkCooldown(message.author.id, command.data.name, cooldownAmount);
+            
+            if (remaining) {
+                const waitTime = (remaining / 1000).toFixed(1);
+                const cooldownEmbed = createEmbed('warn', '⏳ ¡Espera un poco!', `Por favor, espera **${waitTime}s** antes de volver a usar \`${prefix}${commandName}\`.`);
+                return message.reply({ embeds: [cooldownEmbed] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+            }
+
             try {
                 // --- Procesador de Argumentos Mejorado ---
                 // Extraemos menciones, números y strings de forma limpia

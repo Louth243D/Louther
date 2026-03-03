@@ -1,5 +1,6 @@
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
+const { checkCooldown } = require('../utils/cooldown.js');
 
 module.exports = {
   name: 'interactionCreate',
@@ -16,6 +17,17 @@ module.exports = {
           const errorEmbed = createEmbed('error', 'Comando No Encontrado', `El comando \`/${interaction.commandName}\` no está cargado en el bot.\n\n**Comandos en memoria:**\n\`${available}\``);
           return interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
         }
+
+        // --- SISTEMA DE COOLDOWNS GLOBAL ---
+        const cooldownAmount = (command.cooldown || 3) * 1000; // Por defecto 3s
+        const remaining = checkCooldown(interaction.user.id, interaction.commandName, cooldownAmount);
+        
+        if (remaining) {
+          const waitTime = (remaining / 1000).toFixed(1);
+          const cooldownEmbed = createEmbed('warn', '⏳ ¡Espera un poco!', `Por favor, espera **${waitTime}s** antes de volver a usar \`/${interaction.commandName}\`.\n\n*Esto evita el spam y ayuda al rendimiento del bot.*`);
+          return interaction.reply({ embeds: [cooldownEmbed], flags: [MessageFlags.Ephemeral] });
+        }
+
         return await command.execute(interaction);
       }
 
