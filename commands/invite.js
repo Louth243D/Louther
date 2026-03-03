@@ -39,7 +39,7 @@ module.exports = {
             new ButtonBuilder()
                 .setLabel('Servidor de Soporte')
                 .setStyle(ButtonStyle.Link)
-                .setURL('https://discord.gg/louther') // Reemplaza con tu servidor si tienes uno
+                .setURL('https://discord.gg/hBpw68VZFT') // Reemplaza con tu servidor si tienes uno
                 .setEmoji('🛡️')
         );
 
