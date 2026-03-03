@@ -47,10 +47,10 @@ module.exports = {
             .replace(/{server}/g, member.guild.name)
             .replace(/{memberCount}/g, member.guild.memberCount);
 
-          const welcomeEmbed = createEmbed('info', `👋 ¡Bienvenido/a a ${member.guild.name}!`, finalMsg, {
+          const welcomeEmbed = createEmbed('info', `¡BIENVENIDO, ${member.user.username.toUpperCase()}!`, finalMsg, {
             thumbnail: member.user.displayAvatarURL({ dynamic: true }),
-            footer: `¡Ahora somos ${member.guild.memberCount} miembros!`,
-            image: 'https://i.imgur.com/vA7unZ2.png' // Puedes cambiar esta URL por un banner de bienvenida
+            footer: `Tú eres el miembro #${member.guild.memberCount}`,
+            image: member.guild.bannerURL({ size: 1024 }) || 'https://i.imgur.com/vA7unZ2.png'
           });
 
           await welcomeChannel.send({ content: `<@${member.id}>`, embeds: [welcomeEmbed] });
