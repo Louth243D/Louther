@@ -244,7 +244,7 @@ async function startFlow(interaction) {
                 return menuCol.stop();
             }
 
-            if (i.isStringSelect()) {
+            if (i.isStringSelectMenu()) {
                 const type = i.values[0];
                 const templates = getTemplates(projectName);
                 const template = templates[type];
