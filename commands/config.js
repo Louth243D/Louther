@@ -40,6 +40,7 @@ const defaultConfig = {
     persistentLogIds: {},
     welcomeChannelId: null,
     welcomeMessage: '¡Bienvenido/a {user} a {server}!',
+    welcomeBackground: null,
     rules: 'No se han configurado reglas aún.',
     autoRoleId: null,
     levelRewards: {}
@@ -58,7 +59,8 @@ module.exports = {
       sub.setName('set').setDescription('Actualiza una opción rápida')
         .addStringOption(o => o.setName('clave').setDescription('Opción a modificar').addChoices(
             { name: 'prefix', value: 'prefix' },
-            { name: 'welcomeMessage', value: 'welcomeMessage' }
+            { name: 'welcomeMessage', value: 'welcomeMessage' },
+            { name: 'welcomeBackground', value: 'welcomeBackground' }
         ).setRequired(true))
         .addStringOption(o => o.setName('valor').setDescription('Nuevo valor').setRequired(true)))
     .addSubcommand(sub => sub.setName('reset').setDescription('Restaura los valores de configuración por defecto'))
@@ -91,6 +93,7 @@ module.exports = {
                   { name: '📝 Canal Logs', value: config.logChannelId ? `<#${config.logChannelId}>` : '`No configurado`', inline: true },
                   { name: '📊 Nivel Logs', value: `\`Nivel ${config.logLevel || 1} (${levelNames[config.logLevel || 1]})\``, inline: true },
                   { name: '👤 Rol Automático', value: config.autoRoleId ? `<@&${config.autoRoleId}>` : '`No configurado`', inline: true },
+                  { name: '🖼️ Fondo Bienvenida', value: config.welcomeBackground ? `[Ver Imagen](${config.welcomeBackground})` : '`Por defecto`', inline: true },
                   { name: '👋 Bienvenida', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '`Canal no configurado`', inline: true },
                   { name: '📜 Mensaje', value: `\`${config.welcomeMessage}\``, inline: false }
               ],
@@ -104,6 +107,10 @@ module.exports = {
           const val = interaction.options.getString('valor', true);
           if (key === 'prefix') config.prefix = val.slice(0, 5);
           else if (key === 'welcomeMessage') config.welcomeMessage = val.slice(0, 300);
+          else if (key === 'welcomeBackground') {
+            if (!val.startsWith('http')) return interaction.reply({ content: 'Debes proporcionar una URL válida para la imagen.', flags: [MessageFlags.Ephemeral] });
+            config.welcomeBackground = val;
+          }
           
           await DataManager.saveFile(`configs/${guildId}.json`, config);
           return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada a \`${val}\`.`)] });

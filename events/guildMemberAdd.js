@@ -1,7 +1,8 @@
-const { Events, PermissionFlagsBits } = require('discord.js');
+const { Events, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
 const DataManager = require('../utils/dataManager.js');
 const { sendLog } = require('../utils/logger.js');
+const { generateWelcomeImage } = require('../utils/imageGenerator.js');
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -47,13 +48,23 @@ module.exports = {
             .replace(/{server}/g, member.guild.name)
             .replace(/{memberCount}/g, member.guild.memberCount);
 
+          // Generar Imagen de Bienvenida
+          const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256 });
+          const welcomeBuffer = await generateWelcomeImage(
+            avatarUrl, 
+            member.user.username, 
+            member.guild.name, 
+            config.welcomeBackground
+          );
+          const attachment = new AttachmentBuilder(welcomeBuffer, { name: 'welcome.png' });
+
           const welcomeEmbed = createEmbed('info', `¡BIENVENIDO, ${member.user.username.toUpperCase()}!`, finalMsg, {
             thumbnail: member.user.displayAvatarURL({ dynamic: true }),
             footer: `Tú eres el miembro #${member.guild.memberCount}`,
-            image: member.guild.bannerURL({ size: 1024 }) || 'https://i.imgur.com/vA7unZ2.png'
+            image: 'attachment://welcome.png'
           });
 
-          await welcomeChannel.send({ content: `<@${member.id}>`, embeds: [welcomeEmbed] });
+          await welcomeChannel.send({ content: `<@${member.id}>`, embeds: [welcomeEmbed], files: [attachment] });
         }
       }
 

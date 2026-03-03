@@ -11,6 +11,7 @@
     "node": ">=20 <21"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.95",
     "anime-actions": "^2.1.2",
     "discord.js": "14.25.1",
     "dotenv": "^16.4.5",
