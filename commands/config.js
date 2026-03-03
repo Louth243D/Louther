@@ -151,7 +151,7 @@ async function handleServerSetup(interaction) {
 
     if (genData[guildId]) {
         const existing = genData[guildId];
-        const wipeEmbed = createEmbed('warn', 'Servidor ya Configurado', `Estructura detectada: **${existing.projectName}**.\n¿Deseas borrarla para instalar una nueva?`, {
+        const wipeEmbed = createEmbed('warn', 'Servidor ya Configurado', `Ya existe una estructura generada para el proyecto **${existing.projectName}**.\n\n¿Qué deseas hacer? Si eliges **Borrar y Recrear**, se eliminarán permanentemente todos los roles y canales creados anteriormente por el bot.`, {
             fields: [
                 { name: '📊 Elementos', value: `Canales: \`${existing.channels.length}\` | Roles: \`${existing.roles.length}\``, inline: true }
             ]
@@ -163,18 +163,29 @@ async function handleServerSetup(interaction) {
         );
 
         const res = await interaction.reply({ embeds: [wipeEmbed], components: [row], flags: [MessageFlags.Ephemeral], withResponse: true });
-        const collector = res.resource?.message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+        const msg = res.resource?.message || res;
+        const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
         collector.on('collect', async i => {
-            if (i.customId === 'wipe_cancel') return i.update({ content: 'Cancelado.', embeds: [], components: [] });
+            if (i.customId === 'wipe_cancel') {
+                return i.update({ embeds: [createEmbed('info', 'Proceso Cancelado', 'No se han realizado cambios.')], components: [] });
+            }
+            
             await i.update({ embeds: [createEmbed('info', 'Limpiando...', 'Borrando canales y roles previos...') ], components: [] });
             
-            for (const id of existing.channels) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
-            for (const id of existing.categories) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
-            for (const id of existing.roles) await interaction.guild.roles.fetch(id).then(r => r?.delete()).catch(() => {});
+            // Usamos la variable local freshGenData para evitar cierres de ámbito
+            let currentGenData = readGenData();
+            let serverData = currentGenData[guildId];
+            
+            if (serverData) {
+                for (const id of serverData.channels) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
+                for (const id of serverData.categories) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
+                for (const id of serverData.roles) await interaction.guild.roles.fetch(id).then(r => r?.delete()).catch(() => {});
 
-            delete genData[guildId];
-            writeGenData(genData);
+                delete currentGenData[guildId];
+                writeGenData(currentGenData);
+            }
+            
             return startFlow(interaction);
         });
         return;
@@ -192,6 +203,15 @@ async function startFlow(interaction) {
     });
 
     const nameCol = interaction.channel.createMessageCollector({ filter: m => m.author.id === interaction.user.id, time: 30000, max: 1 });
+    const btnCol = flowMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+
+    btnCol.on('collect', async i => {
+        if (i.customId === 'flow_cancel') {
+            nameCol.stop('cancelled');
+            await i.update({ embeds: [createEmbed('error', 'Proceso Cancelado', 'Has cancelado la creación del servidor.')], components: [] });
+            return btnCol.stop();
+        }
+    });
     
     nameCol.on('collect', async m => {
         const projectName = m.content.trim();
