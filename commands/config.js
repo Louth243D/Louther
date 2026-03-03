@@ -80,7 +80,6 @@ module.exports = {
     try {
       switch (sub) {
         case 'setup_server': {
-            // Reutilizamos la lógica del antiguo create-server integrada aquí
             return handleServerSetup(interaction);
         }
 
@@ -121,7 +120,6 @@ module.exports = {
         }
 
         case 'interactive': {
-            // Lógica del panel interactivo (antes era 'setup')
             return handleInteractiveSetup(interaction, config, guildId);
         }
 
@@ -174,7 +172,6 @@ async function handleServerSetup(interaction) {
             
             await i.update({ embeds: [createEmbed('info', 'Limpiando...', 'Borrando canales y roles previos...') ], components: [] });
             
-            // Usamos la variable local freshGenData para evitar cierres de ámbito
             let currentGenData = readGenData();
             let serverData = currentGenData[guildId];
             
@@ -222,10 +219,11 @@ async function startFlow(interaction) {
             .setCustomId('select_type')
             .setPlaceholder('Elige una plantilla')
             .addOptions([
-                { label: 'Gaming/Casual', value: 'casual', emoji: '🎮' },
-                { label: 'Streamer', value: 'streamer', emoji: '🎥' },
-                { label: 'GameDev', value: 'gamedev', emoji: '🛠️' },
-                { label: 'Base Moderna', value: 'base', emoji: '✨' }
+                { label: 'Juegos y Comunidad Casual', value: 'casual', emoji: '🎮' },
+                { label: 'Comunidad para Streamers', value: 'streamer', emoji: '🎥' },
+                { label: 'Desarrollo de Videojuegos', value: 'gamedev', emoji: '🛠️' },
+                { label: 'Alianzas y Bots', value: 'partnership', emoji: '🤝' },
+                { label: 'Plantilla Base Moderna', value: 'base', emoji: '✨' }
             ]);
 
         await interaction.followUp({ 
@@ -249,16 +247,15 @@ async function startFlow(interaction) {
                     const btnCol = confirmRes.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
                     btnCol.on('collect', async bi => {
                         if (bi.customId === 'cancel') return bi.update({ content: 'Cancelado.', embeds: [], components: [] });
-                        await bi.update({ embeds: [createEmbed('info', '⚙️ Creando...', 'Generando estructura profesional...') ], components: [] });
+                        await bi.update({ embeds: [createEmbed('info', '⚙️ Creando...', 'Generando estructura profesional completa...') ], components: [] });
                         
-                        // Lógica de creación (Roles y Canales) simplificada para integración
                         const results = await createStructure(interaction.guild, template, projectName);
                         
                         const finalGenData = readGenData();
                         finalGenData[interaction.guild.id] = { projectName, type, createdAt: Date.now(), ...results };
                         writeGenData(finalGenData);
 
-                        await bi.editReply({ embeds: [createEmbed('success', '✨ Servidor Listo', `Estructura de **${projectName}** generada correctamente.`)] });
+                        await bi.editReply({ embeds: [createEmbed('success', '✨ Servidor Listo', `Estructura de **${projectName}** generada con éxito.`)] });
                     });
                 });
             });
@@ -270,38 +267,131 @@ async function createStructure(guild, template, projectName) {
     const roles = [], channels = [], categories = [];
     const createdRoles = {};
 
-    for (const rName of template.roles) {
-        let perms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages];
-        let color = '#99aab5';
-        if (rName.includes('Fundador') || rName.includes('Admin')) { perms.push(PermissionFlagsBits.Administrator); color = '#e74c3c'; }
-        if (rName.includes('Mod')) { perms.push(PermissionFlagsBits.ManageMessages, PermissionFlagsBits.KickMembers); color = '#2ecc71'; }
-        
-        const role = await guild.roles.create({ name: rName, permissions: perms, color, hoist: true, reason: 'Setup ' + projectName });
-        createdRoles[rName] = role;
+    // 1. Crear Roles con colores y permisos
+    for (const rData of template.roles) {
+        const role = await guild.roles.create({ 
+            name: rData.name, 
+            permissions: rData.perms, 
+            color: rData.color, 
+            hoist: true, 
+            reason: 'Setup ' + projectName 
+        });
+        createdRoles[rData.name] = role;
         roles.push(role.id);
     }
 
+    // 2. Crear Estructura
     for (const catData of template.structure) {
         const overwrites = [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }];
-        if (createdRoles['🛡 Moderador'] || createdRoles['Mod']) overwrites.push({ id: (createdRoles['🛡 Moderador'] || createdRoles['Mod']).id, allow: [PermissionFlagsBits.ViewChannel] });
+        
+        // Añadir permisos de Staff a categorías privadas
+        if (catData.private) {
+            const staffRoles = template.roles.filter(r => r.staff).map(r => createdRoles[r.name]);
+            staffRoles.forEach(r => {
+                if (r) overwrites.push({ id: r.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages] });
+            });
+        }
 
-        const cat = await guild.channels.create({ name: catData.name, type: ChannelType.GuildCategory, permissionOverwrites: catData.private ? overwrites : [] });
+        const cat = await guild.channels.create({ 
+            name: catData.name, 
+            type: ChannelType.GuildCategory, 
+            permissionOverwrites: catData.private ? overwrites : [] 
+        });
         categories.push(cat.id);
 
-        for (const cName of catData.channels) {
-            const chan = await guild.channels.create({ name: typeof cName === 'string' ? cName : cName.name, type: ChannelType.GuildText, parent: cat.id });
+        for (const chanData of catData.channels) {
+            const cName = typeof chanData === 'string' ? chanData : chanData.name;
+            const cType = chanData.type === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
+            
+            const chan = await guild.channels.create({ 
+                name: cName, 
+                type: cType, 
+                parent: cat.id,
+                topic: chanData.topic || `Canal de ${projectName}`
+            });
             channels.push(chan.id);
+
+            if (cName === 'reglas' || cName === 'normas') {
+                await chan.send({ embeds: [createEmbed('info', '📜 Normas', `Bienvenido a **${projectName}**. Por favor lee las reglas.`)] }).then(m => m.pin());
+            }
         }
     }
     return { roles, channels, categories };
 }
 
 function getTemplates(projectName) {
+    const adminPerms = [PermissionFlagsBits.Administrator];
+    const modPerms = [PermissionFlagsBits.ManageMessages, PermissionFlagsBits.KickMembers, PermissionFlagsBits.BanMembers, PermissionFlagsBits.ModerateMembers];
+    const userPerms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak];
+
     return {
-        casual: { roles: ['👑 Líder', '🛡 Staff', '🎮 Gamer'], structure: [{ name: '💬 Social', channels: ['general', 'media'] }, { name: '🎮 Gaming', channels: ['busco-partida'] }] },
-        streamer: { roles: ['🎥 Streamer', '🛡 Mod', '💎 Sub'], structure: [{ name: '📺 Live', channels: ['anuncios', 'chat-stream'] }, { name: '👥 Fans', channels: ['general'] }] },
-        gamedev: { roles: ['👑 CEO', '🛠 Dev', '🧪 Tester'], structure: [{ name: '📢 Devlogs', channels: ['noticias', 'roadmap'] }, { name: '💻 Interno', private: true, channels: ['bugs', 'codigo'] }] },
-        base: { roles: ['Admin', 'Mod', 'User'], structure: [{ name: 'General', channels: ['bienvenida', 'chat'] }] }
+        casual: {
+            roles: [
+                { name: '👑 Fundador', perms: adminPerms, color: '#e74c3c', staff: true },
+                { name: '🛡️ Moderador', perms: modPerms, color: '#2ecc71', staff: true },
+                { name: '⭐ VIP', perms: userPerms, color: '#f1c40f' },
+                { name: '👤 Miembro', perms: userPerms, color: '#99aab5' }
+            ],
+            structure: [
+                { name: '📌 INFORMACIÓN', channels: [{ name: 'reglas', topic: 'Normas del servidor' }, 'anuncios', 'roles'] },
+                { name: '💬 COMUNIDAD', channels: ['general', 'fotos', 'memes', 'comandos'] },
+                { name: '🎮 GAMING', channels: ['busco-partida', 'clips-de-juego'] },
+                { name: '🔊 SALAS DE VOZ', type: 'voice', channels: ['General', 'Gaming 1', 'Gaming 2', 'Música'] },
+                { name: '📊 ADMINISTRACIÓN', private: true, channels: ['staff-chat', 'logs-servidor'] }
+            ]
+        },
+        streamer: {
+            roles: [
+                { name: '🎥 Streamer', perms: adminPerms, color: '#9b59b6', staff: true },
+                { name: '🛠️ Mod de Elite', perms: modPerms, color: '#2ecc71', staff: true },
+                { name: '💎 Suscriptor', perms: userPerms, color: '#f1c40f' },
+                { name: '🔔 Notificaciones', perms: userPerms, color: '#3498db' }
+            ],
+            structure: [
+                { name: '📺 DIRECTOS', channels: ['avisos-en-vivo', 'sugerencias-stream', 'momentos-top'] },
+                { name: '💬 COMUNIDAD', channels: ['general', 'fan-arts', 'off-topic', 'redes-sociales'] },
+                { name: '🔊 SALAS VIP', type: 'voice', channels: ['Charla con el Streamer', 'Gaming con Subs'] },
+                { name: '📊 STAFF', private: true, channels: ['mod-chat', 'anuncios-staff'] }
+            ]
+        },
+        gamedev: {
+            roles: [
+                { name: '👑 Director', perms: adminPerms, color: '#e67e22', staff: true },
+                { name: '🛠️ Desarrollador', perms: modPerms, color: '#3498db', staff: true },
+                { name: '🎨 Artista', perms: userPerms, color: '#e91e63' },
+                { name: '🧪 Tester', perms: userPerms, color: '#1abc9c' }
+            ],
+            structure: [
+                { name: '📢 DEVLOGS', channels: ['noticias-dev', 'roadmap', 'changelog'] },
+                { name: '💻 DESARROLLO', private: true, channels: ['bugs-reportes', 'sistemas', 'diseno-nivel'] },
+                { name: '🎨 CREATIVO', channels: ['arte-galeria', 'sonido-musica'] },
+                { name: '🧪 TESTING', channels: ['feedback-testers', 'bugs-publicos'] }
+            ]
+        },
+        partnership: {
+            roles: [
+                { name: '👑 CEO', perms: adminPerms, color: '#000000', staff: true },
+                { name: '🤝 Partner Manager', perms: modPerms, color: '#2ecc71', staff: true },
+                { name: '💎 Partner VIP', perms: userPerms, color: '#f1c40f' }
+            ],
+            structure: [
+                { name: '📜 INFO', channels: ['normas', 'anuncios', 'alianzas-info'] },
+                { name: '🤝 ALIANZAS', channels: ['nuestras-alianzas', 'tus-alianzas', 'alianzas-pendientes'] },
+                { name: '💬 CHAT', channels: ['general', 'comandos-bot'] }
+            ]
+        },
+        base: {
+            roles: [
+                { name: 'Admin', perms: adminPerms, color: '#000000', staff: true },
+                { name: 'Mod', perms: modPerms, color: '#2ecc71', staff: true },
+                { name: 'User', perms: userPerms, color: '#99aab5' }
+            ],
+            structure: [
+                { name: 'General', channels: ['bienvenida', 'reglas', 'chat-general'] },
+                { name: 'Voz', type: 'voice', channels: ['Salón 1', 'Salón 2'] },
+                { name: 'Admin', private: true, channels: ['staff-chat', 'logs'] }
+            ]
+        }
     };
 }
 
