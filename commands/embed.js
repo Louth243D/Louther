@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { resolveImageUrl } = require('../utils/urlUtils.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -30,8 +31,8 @@ module.exports = {
             titleUrl = interaction.options.getString('url');
             description = interaction.options.getString('descripcion').replace(/\\n/g, '\n');
             color = interaction.options.getString('color') || '#5865F2';
-            image = interaction.options.getString('imagen');
-            thumbnail = interaction.options.getString('miniatura');
+                    image = await resolveImageUrl(interaction.options.getString('imagen'));
+            thumbnail = await resolveImageUrl(interaction.options.getString('miniatura'));
             authorName = interaction.options.getString('autor_nombre');
             authorIcon = interaction.options.getString('autor_icono');
             authorUrl = interaction.options.getString('autor_url');
