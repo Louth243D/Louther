@@ -1,0 +1,4 @@
+{
+  "defaultPrefix": "!",
+  "defaultWelcomeMessage": "¡Bienvenido/a {user} a {server}!"
+}

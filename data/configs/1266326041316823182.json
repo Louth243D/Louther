@@ -1,0 +1,14 @@
+{
+  "prefix": "t!",
+  "logChannelId": "1478135319306965114",
+  "welcomeMessage": "¡Bienvenido/a {user} a {server}!",
+  "rules": "No se han configurado reglas aún.",
+  "autoRoleId": "1478125452295012417",
+  "levelRewards": {},
+  "logLevel": 3,
+  "persistentLogIds": {
+    "messages": "1478139358723702885",
+    "channels": "1478139413224624270",
+    "mod": "1478142703077425214"
+  }
+}

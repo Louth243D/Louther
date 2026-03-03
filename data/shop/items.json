@@ -1,0 +1,6 @@
+[
+    { "id": "fish_rod", "name": "Caña de Pescar", "price": 500, "description": "Para pescar recompensas extra.", "category": "Herramientas" },
+    { "id": "pickaxe", "name": "Pico de Minero", "price": 1000, "description": "Para trabajar más eficientemente.", "category": "Herramientas" },
+    { "id": "lucky_charm", "name": "Amuleto de Suerte", "price": 2000, "description": "Aumenta ligeramente tus ganancias.", "category": "Especial" },
+    { "id": "vip_pass", "name": "Pase VIP", "price": 10000, "description": "Un rol exclusivo y prestigio.", "category": "Especial" }
+]

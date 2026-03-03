@@ -1,0 +1,19 @@
+{
+  "name": "discord-bot-json",
+  "version": "1.0.0",
+  "description": "Bot de Discord en Node.js 20 con discord.js v14 y almacenamiento en JSON.",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "dependencies": {
+    "anime-actions": "^2.1.2",
+    "discord.js": "14.25.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2"
+  }
+}
