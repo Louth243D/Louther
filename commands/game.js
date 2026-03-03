@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Compo
 const { createEmbed } = require('../utils/embed.js');
 
 module.exports = {
+    category: '🎮 JUEGOS',
     data: new SlashCommandBuilder()
         .setName('game')
         .setDescription('Comandos de juegos y entretenimiento')

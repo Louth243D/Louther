@@ -16,6 +16,7 @@ const defaultEconomyData = {
 };
 
 module.exports = {
+    category: '⚔️ RPG',
     cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('rpg')

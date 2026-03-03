@@ -46,6 +46,7 @@ const defaultConfig = {
 };
 
 module.exports = {
+  category: '⚙️ CONFIGURACIÓN',
   cooldown: 5,
   data: new SlashCommandBuilder()
     .setName('config')

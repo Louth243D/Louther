@@ -22,6 +22,7 @@ async function isStaff(member) {
 }
 
 module.exports = {
+    category: '🛡️ MODERACIÓN',
     cooldown: 3,
     data: new SlashCommandBuilder()
         .setName('mod')

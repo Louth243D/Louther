@@ -13,6 +13,7 @@ const defaultEconomy = {
 };
 
 module.exports = {
+    category: '💰 ECONOMÍA',
     cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('eco')

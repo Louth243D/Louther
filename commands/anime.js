@@ -20,6 +20,7 @@ function saveStats(stats) {
 }
 
 module.exports = {
+    category: '🎌 INTERACCIÓN',
     cooldown: 5,
     data: new SlashCommandBuilder()
         .setName('anime')

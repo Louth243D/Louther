@@ -86,6 +86,7 @@ function saveTodo(userId, data) {
 }
 
 module.exports = {
+    category: 'ℹ️ UTILIDAD',
     data: new SlashCommandBuilder()
         .setName('util')
         .setDescription('Comandos de utilidad e información')

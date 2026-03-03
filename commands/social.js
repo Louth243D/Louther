@@ -5,6 +5,7 @@ const fs = require('fs').promises; // Usamos la versión de promesas de fs
 const path = require('path');
 
 module.exports = {
+    category: '🌟 SOCIAL',
     data: new SlashCommandBuilder()
         .setName('social')
         .setDescription('Comandos de interacción social y perfiles')

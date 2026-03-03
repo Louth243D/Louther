@@ -18,55 +18,41 @@ module.exports = {
     const guildId = interaction.guild?.id;
     const isInteraction = interaction.commandName !== undefined;
     const user = isInteraction ? interaction.user : interaction.author;
+    const botClient = interaction.client;
     
     // Obtener configuración del servidor para el prefijo
     const config = guildId ? await DataManager.getFile(`configs/${guildId}.json`, { prefix: '!' }) : { prefix: '!' };
     const prefix = config.prefix || '!';
 
-    const mainEmbed = createEmbed('info', 'Guía Maestra de Louther', 'Bienvenido al centro de ayuda. Aquí tienes un resumen de mis capacidades categorizadas.', {
-        fields: [
-            { 
-                name: '⚙️ CONFIGURACIÓN (`/config`)', 
-                value: '`show`, `setup_server`, `set`, `interactive`, `rules`, `view_rules`, `role_panel`, `level_rewards`', 
-                inline: false 
-            },
-            { 
-                name: '🛡️ MODERACIÓN (`/mod`)', 
-                value: '`warn`, `ban`, `kick`, `timeout`, `warnings`, `clear`', 
-                inline: true 
-            },
-            { 
-                name: '💰 ECONOMÍA (`/eco`)', 
-                value: '`balance`, `daily`, `weekly`, `work`, `shop`, `buy`, `inventory`, `leaderboard`, `give`', 
-                inline: true 
-            },
-            { 
-                name: '⚔️ RPG (`/rpg`)', 
-                value: '`adventure`, `level`', 
-                inline: true 
-            },
-            { 
-                name: '🎮 JUEGOS (`/game`)', 
-                value: '`blackjack`, `rps`', 
-                inline: true 
-            },
-            { 
-                name: '🌟 SOCIAL (`/social`)', 
-                value: '`marry`, `divorce`, `love`, `rep`, `birthday`, `todaybirthdays`', 
-                inline: true 
-            },
-            { 
-                name: 'ℹ️ UTILIDAD (`/util`)', 
-                value: '`ping`, `profile`, `server`, `user`, `avatar`, `roles`, `stats`, `rank`, `suggest`, `timer`, `todo`, `vote`, `banner`', 
-                inline: true 
-            },
-            { 
-                name: '🎌 INTERACCIÓN', 
-                value: '`/anime` - Reacciones y acciones animadas.', 
-                inline: false 
-            }
-        ],
-        thumbnail: interaction.client.user.displayAvatarURL(),
+    // Organizar comandos por categoría dinámicamente
+    const categories = {};
+    botClient.commands.forEach(cmd => {
+        if (cmd.data.name === 'help') return; // Omitir el propio comando help
+        
+        const category = cmd.category || '❓ OTROS';
+        if (!categories[category]) categories[category] = [];
+        
+        // Obtener subcomandos si existen
+        const subcommands = cmd.data.options
+            .filter(opt => opt.constructor.name === 'SlashCommandSubcommandBuilder' || opt.type === 1)
+            .map(sub => sub.name);
+
+        if (subcommands.length > 0) {
+            categories[category].push(`\`/${cmd.data.name}\` (${subcommands.map(s => `\`${s}\``).join(', ')})`);
+        } else {
+            categories[category].push(`\`/${cmd.data.name}\``);
+        }
+    });
+
+    const fields = Object.keys(categories).sort().map(cat => ({
+        name: cat,
+        value: categories[cat].join('\n'),
+        inline: false
+    }));
+
+    const mainEmbed = createEmbed('info', 'Guía Maestra de Louther', 'Aquí tienes todos mis comandos disponibles, organizados por categoría y detectados automáticamente.', {
+        fields: fields,
+        thumbnail: botClient.user.displayAvatarURL(),
         footer: `Prefijo: ${prefix} | Usa /comando para más detalles`
     });
 
@@ -77,7 +63,7 @@ module.exports = {
             .setStyle(ButtonStyle.Primary)
             .setEmoji('⌨️'),
         new ButtonBuilder()
-            .setURL('https://top.gg/bot/' + interaction.client.user.id) // Enlace dinámico a Top.gg
+            .setURL('https://top.gg/bot/' + botClient.user.id)
             .setLabel('Votar en Top.gg')
             .setStyle(ButtonStyle.Link)
             .setEmoji('💎')
@@ -96,13 +82,11 @@ module.exports = {
 
     collector.on('collect', async i => {
         if (i.customId === 'help_prefix_list') {
-            const prefixEmbed = createEmbed('info', 'Comandos por Prefijo', `Has establecido el prefijo \`${prefix}\`. Los comandos se usan de la siguiente manera:\n\n` +
-                `**Ejemplos Rápidos:**\n` +
+            const prefixEmbed = createEmbed('info', 'Comandos por Prefijo', `Has establecido el prefijo \`${prefix}\`. Los comandos se usan así:\n\n` +
+                `**Ejemplos:**\n` +
                 `> \`${prefix}ping\` - Latencia del bot.\n` +
-                `> \`${prefix}util profile\` - Tu perfil de usuario.\n` +
-                `> \`${prefix}eco balance\` - Tu saldo bancario.\n` +
-                `> \`${prefix}mod warn @usuario\` - Sistema de advertencias.\n\n` +
-                `*La mayoría de comandos siguen el patrón \`${prefix}<comando> <subcomando>\`.*`, {
+                `> \`${prefix}util profile\` - Tu perfil.\n\n` +
+                `*La lista se sincroniza con los comandos de barra cargados.*`, {
                 footer: `Prefijo actual: ${prefix} • Louther v1.0`
             });
 
