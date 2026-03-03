@@ -13,6 +13,25 @@ const {
 } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
 const DataManager = require('../utils/dataManager.js');
+const fs = require('fs');
+const path = require('path');
+
+const dataFile = path.join(__dirname, '..', 'data', 'server_gen.json');
+
+function readGenData() {
+    try {
+        if (!fs.existsSync(dataFile)) return {};
+        return JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+    } catch (e) { return {}; }
+}
+
+function writeGenData(data) {
+    try {
+        const dir = path.dirname(dataFile);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+    } catch (e) { console.error('Error guardando gen data:', e); }
+}
 
 const defaultConfig = {
     prefix: '!',
@@ -27,51 +46,53 @@ const defaultConfig = {
 };
 
 module.exports = {
+  cooldown: 5,
   data: new SlashCommandBuilder()
     .setName('config')
-    .setDescription('Muestra o ajusta opciones de configuración')
+    .setDescription('Administración y configuración avanzada del servidor')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand(sub => sub.setName('show').setDescription('Muestra la configuración actual'))
+    .addSubcommand(sub => sub.setName('show').setDescription('Muestra la configuración actual del bot'))
+    .addSubcommand(sub => sub.setName('setup_server').setDescription('Generador profesional de servidores con plantillas y roles'))
     .addSubcommand(sub =>
-      sub.setName('set').setDescription('Actualiza una opción concreta')
+      sub.setName('set').setDescription('Actualiza una opción rápida')
         .addStringOption(o => o.setName('clave').setDescription('Opción a modificar').addChoices(
             { name: 'prefix', value: 'prefix' },
             { name: 'welcomeMessage', value: 'welcomeMessage' }
         ).setRequired(true))
         .addStringOption(o => o.setName('valor').setDescription('Nuevo valor').setRequired(true)))
-    .addSubcommand(sub => sub.setName('reset').setDescription('Restaura valores por defecto'))
-    .addSubcommand(sub => sub.setName('setup').setDescription('Panel interactivo de configuración'))
-    .addSubcommand(sub => sub.setName('rules').setDescription('Configura las reglas del servidor').addStringOption(o => o.setName('contenido').setDescription('Contenido de las reglas').setRequired(true)))
-    .addSubcommand(sub => sub.setName('view_rules').setDescription('Visualiza las reglas del servidor'))
-    .addSubcommand(sub => sub.setName('role_panel').setDescription('Crea un panel interactivo para que los usuarios elijan sus roles'))
-    .addSubcommand(sub => sub.setName('faq').setDescription('Configura las preguntas frecuentes del servidor').addStringOption(o => o.setName('contenido').setDescription('Contenido de las FAQ').setRequired(true)))
-    .addSubcommand(sub => sub.setName('view_faq').setDescription('Visualiza las preguntas frecuentes'))
-    .addSubcommand(sub => sub.setName('level_rewards').setDescription('Configura roles de recompensa por nivel')
+    .addSubcommand(sub => sub.setName('reset').setDescription('Restaura los valores de configuración por defecto'))
+    .addSubcommand(sub => sub.setName('interactive').setDescription('Panel visual para configurar módulos del bot'))
+    .addSubcommand(sub => sub.setName('rules').setDescription('Configura las reglas oficiales').addStringOption(o => o.setName('contenido').setDescription('Contenido de las reglas').setRequired(true)))
+    .addSubcommand(sub => sub.setName('view_rules').setDescription('Visualiza las reglas actuales'))
+    .addSubcommand(sub => sub.setName('role_panel').setDescription('Crea un panel de auto-roles'))
+    .addSubcommand(sub => sub.setName('level_rewards').setDescription('Configura roles por nivel')
         .addIntegerOption(o => o.setName('nivel').setDescription('Nivel requerido').setRequired(true))
-        .addRoleOption(o => o.setName('rol').setDescription('Rol a entregar').setRequired(true)))
-    .addSubcommand(sub => sub.setName('remove_reward').setDescription('Elimina una recompensa de nivel')
-        .addIntegerOption(o => o.setName('nivel').setDescription('Nivel de la recompensa a eliminar').setRequired(true))),
+        .addRoleOption(o => o.setName('rol').setDescription('Rol a entregar').setRequired(true))),
 
   async execute(interaction) {
     const guildId = interaction.guild?.id;
-    if (!guildId) {
-      return interaction.reply({ content: 'Este comando solo funciona en servidores.', flags: [MessageFlags.Ephemeral] });
-    }
+    if (!guildId) return interaction.reply({ content: 'Este comando solo funciona en servidores.', flags: [MessageFlags.Ephemeral] });
     
     const sub = interaction.options.getSubcommand();
     const config = await DataManager.getFile(`configs/${guildId}.json`, defaultConfig);
 
     try {
       switch (sub) {
+        case 'setup_server': {
+            // Reutilizamos la lógica del antiguo create-server integrada aquí
+            return handleServerSetup(interaction);
+        }
+
         case 'show': {
           const levelNames = { 1: 'Moderación', 2: 'Miembros', 3: 'Actividad' };
-          const embed = createEmbed('info', 'Configuración Actual', 'Resumen de los ajustes guardados.', {
+          const embed = createEmbed('info', 'Panel de Control', 'Estado actual de la configuración del bot.', {
               fields: [
                   { name: '⌨️ Prefijo', value: `\`${config.prefix}\``, inline: true },
                   { name: '📝 Canal Logs', value: config.logChannelId ? `<#${config.logChannelId}>` : '`No configurado`', inline: true },
                   { name: '📊 Nivel Logs', value: `\`Nivel ${config.logLevel || 1} (${levelNames[config.logLevel || 1]})\``, inline: true },
                   { name: '👤 Rol Automático', value: config.autoRoleId ? `<@&${config.autoRoleId}>` : '`No configurado`', inline: true },
-                  { name: '👋 Mensaje Bienvenida', value: `\`${config.welcomeMessage}\``, inline: false }
+                  { name: '👋 Bienvenida', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '`Canal no configurado`', inline: true },
+                  { name: '📜 Mensaje', value: `\`${config.welcomeMessage}\``, inline: false }
               ],
               thumbnail: interaction.guild.iconURL({ dynamic: true })
           });
@@ -81,204 +102,210 @@ module.exports = {
         case 'set': {
           const key = interaction.options.getString('clave', true);
           const val = interaction.options.getString('valor', true);
-          if (key === 'prefix') {
-            if (!val || val.length > 5) {
-              return interaction.reply({ content: 'El prefijo debe tener entre 1 y 5 caracteres.', flags: [MessageFlags.Ephemeral] });
-            }
-            config.prefix = val;
-          } else if (key === 'welcomeMessage') {
-            if (val.length > 300) {
-              return interaction.reply({ content: 'El mensaje es demasiado largo (máx 300).', flags: [MessageFlags.Ephemeral] });
-            }
-            config.welcomeMessage = val;
-          }
+          if (key === 'prefix') config.prefix = val.slice(0, 5);
+          else if (key === 'welcomeMessage') config.welcomeMessage = val.slice(0, 300);
+          
           await DataManager.saveFile(`configs/${guildId}.json`, config);
-          const responseEmbed = createEmbed('success', 'Configuración Actualizada', `Se ha actualizado la opción **${key}** a \`${val}\`.\n\n*Nota: Los comandos por prefijo ahora usarán \`${val}\` como activador.*`);
-          return interaction.reply({ embeds: [responseEmbed] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Ajuste Guardado', `Opción **${key}** actualizada a \`${val}\`.`)] });
+        }
+
+        case 'rules': {
+          config.rules = interaction.options.getString('contenido').replace(/\\n/g, '\n');
+          await DataManager.saveFile(`configs/${guildId}.json`, config);
+          return interaction.reply({ embeds: [createEmbed('success', 'Reglas Guardadas', 'Usa `/config view_rules` para verlas.')] });
+        }
+
+        case 'view_rules': {
+          return interaction.reply({ embeds: [createEmbed('info', '📜 REGLAS DEL SERVIDOR', config.rules, { footer: interaction.guild.name, thumbnail: interaction.guild.iconURL({ dynamic: true }) })] });
+        }
+
+        case 'interactive': {
+            // Lógica del panel interactivo (antes era 'setup')
+            return handleInteractiveSetup(interaction, config, guildId);
         }
 
         case 'reset': {
           await DataManager.saveFile(`configs/${guildId}.json`, defaultConfig);
-          return interaction.reply({ embeds: [createEmbed('success', 'Configuración Restaurada', 'Los valores han vuelto a su estado original.')] });
+          return interaction.reply({ embeds: [createEmbed('success', 'Configuración Reiniciada', 'Todos los valores han vuelto a su estado original.')] });
         }
 
-        case 'rules': {
-          const rContent = interaction.options.getString('contenido');
-          config.rules = rContent.replace(/\\n/g, '\n');
-          await DataManager.saveFile(`configs/${guildId}.json`, config);
-          const rEmbed = createEmbed('success', 'Reglas Actualizadas', 'Se han guardado las nuevas reglas con éxito. Usa `/config view_rules` para verlas.');
-          return interaction.reply({ embeds: [rEmbed] });
-        }
-
-        case 'view_rules': {
-          const vrEmbed = createEmbed('info', `📜 REGLAS DEL SERVIDOR`, config.rules, {
-              footer: interaction.guild.name,
-              thumbnail: interaction.guild.iconURL({ dynamic: true })
-          });
-          return interaction.reply({ embeds: [vrEmbed] });
-        }
-
-        case 'setup': {
-            const setupEmbed = createEmbed('info', 'Panel de Configuración Interactivo', 'Selecciona una opción para configurar. El panel se cerrará en 2 minutos de inactividad.');
-
-            const menu = new StringSelectMenuBuilder()
-                .setCustomId('config_setup_menu')
-                .setPlaceholder('Selecciona un módulo para configurar')
-                .addOptions([
-                    { label: 'Canal de Logs', value: 'log_channel', description: 'Canal para registrar acciones y elegir nivel de logs.' },
-                    { label: 'Canal de Bienvenidas', value: 'welcome_channel', description: 'Canal donde se enviarán los mensajes de bienvenida.' },
-                    { label: 'Mensaje de Bienvenida', value: 'welcome_msg', description: 'Personaliza el texto de bienvenida.' },
-                    { label: 'Rol Automático', value: 'autorole', description: 'Rol asignado a los nuevos miembros al unirse.' },
-                ]);
-
-            const row = new ActionRowBuilder().addComponents(menu);
-
-            const response = await interaction.reply({ embeds: [setupEmbed], components: [row], flags: [MessageFlags.Ephemeral], withResponse: true });
-            const msg = response.resource?.message;
-
-            const collector = msg.createMessageComponentCollector({
-                componentType: ComponentType.StringSelect,
-                time: 120000 // 2 minutos
-            });
-
-            collector.on('collect', async i => {
-                if (i.user.id !== interaction.user.id) {
-                    return i.reply({ content: '¡Este panel no es para ti!', flags: [MessageFlags.Ephemeral] });
-                }
-
-                const selection = i.values[0];
-                let responseText = '';
-
-                switch (selection) {
-                    case 'log_channel': {
-                        const channelMenu = new ChannelSelectMenuBuilder()
-                            .setCustomId('setup_log_channel_select')
-                            .setPlaceholder('Selecciona un canal de texto')
-                            .addChannelTypes([ChannelType.GuildText]);
-                        
-                        const channelRow = new ActionRowBuilder().addComponents(channelMenu);
-                        await i.reply({ content: 'Por favor, selecciona el canal que quieres usar para los logs.', components: [channelRow], flags: [MessageFlags.Ephemeral] });
-
-                        const channelCollector = i.channel.createMessageComponentCollector({
-                            componentType: ComponentType.ChannelSelect,
-                            time: 60000,
-                            max: 1
-                        });
-
-                        channelCollector.on('collect', async selectInteraction => {
-                            const channelId = selectInteraction.values[0];
-                            config.logChannelId = channelId;
-                            
-                            // Ahora pedimos el nivel inmediatamente después
-                            const levelMenu = new StringSelectMenuBuilder()
-                                .setCustomId('setup_log_level_select')
-                                .setPlaceholder('Ahora elige el nivel de detalle')
-                                .addOptions([
-                                    { label: 'Nivel 1: Moderación', value: '1', description: 'Expulsiones, Baneos, Advertencias y Silencios.' },
-                                    { label: 'Nivel 2: Miembros', value: '2', description: 'Nivel 1 + Entradas y Salidas de usuarios.' },
-                                    { label: 'Nivel 3: Actividad', value: '3', description: 'Nivel 2 + Ediciones, Borrados y Canales.' }
-                                ]);
-
-                            const levelRow = new ActionRowBuilder().addComponents(levelMenu);
-                            await selectInteraction.update({ 
-                                content: `✅ Canal establecido en <#${channelId}>.\n**Paso final:** Selecciona el nivel de detalle para este canal.`, 
-                                components: [levelRow] 
-                            });
-
-                            const levelCollector = selectInteraction.channel.createMessageComponentCollector({
-                                componentType: ComponentType.StringSelect,
-                                time: 60000,
-                                max: 1
-                            });
-
-                            levelCollector.on('collect', async finalSelect => {
-                                const level = parseInt(finalSelect.values[0]);
-                                config.logLevel = level;
-                                await DataManager.saveFile(`configs/${guildId}.json`, config);
-                                
-                                const levelNames = { 1: 'Moderación', 2: 'Miembros', 3: 'Actividad' };
-                                await finalSelect.update({ 
-                                    content: `🎉 **Configuración de Logs Completada**\nCanal: <#${channelId}>\nNivel: **Nivel ${level} (${levelNames[level]})**`, 
-                                    components: [] 
-                                });
-                            });
-                        });
-                        break;
-                    }
-                    case 'welcome_channel': {
-                        const channelMenu = new ChannelSelectMenuBuilder()
-                            .setCustomId('setup_welcome_channel_select')
-                            .setPlaceholder('Elige un canal para las bienvenidas')
-                            .setChannelTypes([ChannelType.GuildText]);
-
-                        const row = new ActionRowBuilder().addComponents(channelMenu);
-                        await i.reply({ content: 'Por favor, selecciona el canal donde se enviarán las bienvenidas.', components: [row], flags: [MessageFlags.Ephemeral] });
-
-                        const channelCollector = i.channel.createMessageComponentCollector({
-                            componentType: ComponentType.ChannelSelect,
-                            time: 60000,
-                            max: 1
-                        });
-
-                        channelCollector.on('collect', async selectInteraction => {
-                            config.welcomeChannelId = selectInteraction.values[0];
-                            await DataManager.saveFile(`configs/${guildId}.json`, config);
-                            await selectInteraction.update({ content: `✅ Canal de bienvenidas establecido en <#${selectInteraction.values[0]}>.`, components: [] });
-                        });
-                        break;
-                    }
-                    case 'welcome_msg': {
-                        await i.reply({ 
-                            content: 'Para cambiar el mensaje de bienvenida, usa el comando: `/config set clave:welcomeMessage valor:Tu mensaje aquí`.\n\n' +
-                                     '**Variables disponibles:**\n' +
-                                     '> `{user}` - Menciona al usuario.\n' +
-                                     '> `{server}` - Nombre del servidor.\n' +
-                                     '> `{memberCount}` - Total de miembros.', 
-                            flags: [MessageFlags.Ephemeral] 
-                        });
-                        break;
-                    }
-                    case 'autorole': {
-                        const roleMenu = new RoleSelectMenuBuilder()
-                            .setCustomId('setup_autorole_select')
-                            .setPlaceholder('Selecciona un rol');
-
-                        const roleRow = new ActionRowBuilder().addComponents(roleMenu);
-                        await i.reply({ content: 'Por favor, selecciona el rol que se asignará a los nuevos miembros.', components: [roleRow], flags: [MessageFlags.Ephemeral] });
-
-                        const roleCollector = i.channel.createMessageComponentCollector({
-                            componentType: ComponentType.RoleSelect,
-                            time: 60000,
-                            max: 1
-                        });
-
-                        roleCollector.on('collect', async selectInteraction => {
-                            const roleId = selectInteraction.values[0];
-                            config.autoRoleId = roleId;
-                            await DataManager.saveFile(`configs/${guildId}.json`, config);
-                            await selectInteraction.update({ content: `✅ Rol automático establecido en <@&${roleId}>.`, components: [] });
-                        });
-                        break;
-                    }
-                }
-            });
-
-            collector.on('end', () => {
-                interaction.editReply({ content: 'El panel de configuración ha expirado.', components: [] }).catch(() => {});
-            });
-
-            return;
-        }
-
-        // Los otros subcomandos (role_panel, etc.) necesitarían una refactorización más profunda
-        // para ser completamente asíncronos, pero por ahora los dejamos funcionales.
-        default: {
-            return interaction.reply({ embeds: [createEmbed('info', 'Comando en Desarrollo', 'Este subcomando aún no ha sido completamente implementado con el nuevo sistema.')], flags: [MessageFlags.Ephemeral] });
-        }
+        default:
+          return interaction.reply({ content: 'Subcomando no disponible.', flags: [MessageFlags.Ephemeral] });
       }
     } catch (error) {
-        console.error(`[Config Command] Error:`, error);
-        return interaction.reply({ embeds: [createEmbed('error', 'Error Inesperado', 'Ocurrió un error al procesar tu solicitud.')], flags: [MessageFlags.Ephemeral] });
+        console.error(`[Config] Error:`, error);
+        return interaction.reply({ embeds: [createEmbed('error', 'Error en Config', 'No se pudo procesar la configuración.')], flags: [MessageFlags.Ephemeral] });
     }
   }
 };
+
+// --- FUNCIONES DE APOYO ---
+
+async function handleServerSetup(interaction) {
+    if (interaction.user.id !== interaction.guild.ownerId && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+        return interaction.reply({ embeds: [createEmbed('error', 'Dueño Requerido', 'Solo el dueño o administradores pueden usar el generador.')], flags: [MessageFlags.Ephemeral] });
+    }
+
+    const guildId = interaction.guild.id;
+    let genData = readGenData();
+
+    if (genData[guildId]) {
+        const existing = genData[guildId];
+        const wipeEmbed = createEmbed('warn', 'Servidor ya Configurado', `Estructura detectada: **${existing.projectName}**.\n¿Deseas borrarla para instalar una nueva?`, {
+            fields: [
+                { name: '📊 Elementos', value: `Canales: \`${existing.channels.length}\` | Roles: \`${existing.roles.length}\``, inline: true }
+            ]
+        });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('wipe_recreate').setLabel('Borrar y Recrear').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('wipe_cancel').setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
+        );
+
+        const res = await interaction.reply({ embeds: [wipeEmbed], components: [row], flags: [MessageFlags.Ephemeral], withResponse: true });
+        const collector = res.resource?.message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+
+        collector.on('collect', async i => {
+            if (i.customId === 'wipe_cancel') return i.update({ content: 'Cancelado.', embeds: [], components: [] });
+            await i.update({ embeds: [createEmbed('info', 'Limpiando...', 'Borrando canales y roles previos...') ], components: [] });
+            
+            for (const id of existing.channels) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
+            for (const id of existing.categories) await interaction.guild.channels.fetch(id).then(c => c?.delete()).catch(() => {});
+            for (const id of existing.roles) await interaction.guild.roles.fetch(id).then(r => r?.delete()).catch(() => {});
+
+            delete genData[guildId];
+            writeGenData(genData);
+            return startFlow(interaction);
+        });
+        return;
+    }
+
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    return startFlow(interaction);
+}
+
+async function startFlow(interaction) {
+    const flowMsg = await interaction.editReply({ 
+        embeds: [createEmbed('info', '🚀 Generador de Servidor', 'Escribe el nombre de tu proyecto en el chat para comenzar.')], 
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('flow_cancel').setLabel('Cancelar').setStyle(ButtonStyle.Danger))],
+        flags: [MessageFlags.Ephemeral] 
+    });
+
+    const nameCol = interaction.channel.createMessageCollector({ filter: m => m.author.id === interaction.user.id, time: 30000, max: 1 });
+    
+    nameCol.on('collect', async m => {
+        const projectName = m.content.trim();
+        if (m.deletable) m.delete().catch(() => {});
+
+        const select = new StringSelectMenuBuilder()
+            .setCustomId('select_type')
+            .setPlaceholder('Elige una plantilla')
+            .addOptions([
+                { label: 'Gaming/Casual', value: 'casual', emoji: '🎮' },
+                { label: 'Streamer', value: 'streamer', emoji: '🎥' },
+                { label: 'GameDev', value: 'gamedev', emoji: '🛠️' },
+                { label: 'Base Moderna', value: 'base', emoji: '✨' }
+            ]);
+
+        await interaction.followUp({ 
+            embeds: [createEmbed('info', '📂 Plantilla para: ' + projectName, 'Selecciona el estilo de tu servidor.')], 
+            components: [new ActionRowBuilder().addComponents(select)], 
+            flags: [MessageFlags.Ephemeral]
+        }).then(res => {
+            const col = res.createMessageComponentCollector({ componentType: ComponentType.StringSelect, time: 30000 });
+            col.on('collect', async i => {
+                const type = i.values[0];
+                const templates = getTemplates(projectName);
+                const template = templates[type];
+                
+                await i.update({ 
+                    embeds: [createEmbed('warn', '⚠️ Confirmar Creación', `Se crearán ${template.roles.length} roles y ${template.structure.length} categorías.\n¿Confirmas?`) ],
+                    components: [new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('confirm').setLabel('Confirmar').setStyle(ButtonStyle.Success),
+                        new ButtonBuilder().setCustomId('cancel').setLabel('Cancelar').setStyle(ButtonStyle.Danger)
+                    )]
+                }).then(confirmRes => {
+                    const btnCol = confirmRes.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+                    btnCol.on('collect', async bi => {
+                        if (bi.customId === 'cancel') return bi.update({ content: 'Cancelado.', embeds: [], components: [] });
+                        await bi.update({ embeds: [createEmbed('info', '⚙️ Creando...', 'Generando estructura profesional...') ], components: [] });
+                        
+                        // Lógica de creación (Roles y Canales) simplificada para integración
+                        const results = await createStructure(interaction.guild, template, projectName);
+                        
+                        const finalGenData = readGenData();
+                        finalGenData[interaction.guild.id] = { projectName, type, createdAt: Date.now(), ...results };
+                        writeGenData(finalGenData);
+
+                        await bi.editReply({ embeds: [createEmbed('success', '✨ Servidor Listo', `Estructura de **${projectName}** generada correctamente.`)] });
+                    });
+                });
+            });
+        });
+    });
+}
+
+async function createStructure(guild, template, projectName) {
+    const roles = [], channels = [], categories = [];
+    const createdRoles = {};
+
+    for (const rName of template.roles) {
+        let perms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages];
+        let color = '#99aab5';
+        if (rName.includes('Fundador') || rName.includes('Admin')) { perms.push(PermissionFlagsBits.Administrator); color = '#e74c3c'; }
+        if (rName.includes('Mod')) { perms.push(PermissionFlagsBits.ManageMessages, PermissionFlagsBits.KickMembers); color = '#2ecc71'; }
+        
+        const role = await guild.roles.create({ name: rName, permissions: perms, color, hoist: true, reason: 'Setup ' + projectName });
+        createdRoles[rName] = role;
+        roles.push(role.id);
+    }
+
+    for (const catData of template.structure) {
+        const overwrites = [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }];
+        if (createdRoles['🛡 Moderador'] || createdRoles['Mod']) overwrites.push({ id: (createdRoles['🛡 Moderador'] || createdRoles['Mod']).id, allow: [PermissionFlagsBits.ViewChannel] });
+
+        const cat = await guild.channels.create({ name: catData.name, type: ChannelType.GuildCategory, permissionOverwrites: catData.private ? overwrites : [] });
+        categories.push(cat.id);
+
+        for (const cName of catData.channels) {
+            const chan = await guild.channels.create({ name: typeof cName === 'string' ? cName : cName.name, type: ChannelType.GuildText, parent: cat.id });
+            channels.push(chan.id);
+        }
+    }
+    return { roles, channels, categories };
+}
+
+function getTemplates(projectName) {
+    return {
+        casual: { roles: ['👑 Líder', '🛡 Staff', '🎮 Gamer'], structure: [{ name: '💬 Social', channels: ['general', 'media'] }, { name: '🎮 Gaming', channels: ['busco-partida'] }] },
+        streamer: { roles: ['🎥 Streamer', '🛡 Mod', '💎 Sub'], structure: [{ name: '📺 Live', channels: ['anuncios', 'chat-stream'] }, { name: '👥 Fans', channels: ['general'] }] },
+        gamedev: { roles: ['👑 CEO', '🛠 Dev', '🧪 Tester'], structure: [{ name: '📢 Devlogs', channels: ['noticias', 'roadmap'] }, { name: '💻 Interno', private: true, channels: ['bugs', 'codigo'] }] },
+        base: { roles: ['Admin', 'Mod', 'User'], structure: [{ name: 'General', channels: ['bienvenida', 'chat'] }] }
+    };
+}
+
+async function handleInteractiveSetup(interaction, config, guildId) {
+    const menu = new StringSelectMenuBuilder().setCustomId('menu').setPlaceholder('Elige un módulo')
+        .addOptions([
+            { label: 'Logs', value: 'log', description: 'Canal y nivel de registros.' },
+            { label: 'Bienvenidas', value: 'welcome', description: 'Canal de entrada.' },
+            { label: 'Auto-Rol', value: 'autorole', description: 'Rol al unirse.' }
+        ]);
+
+    const res = await interaction.reply({ embeds: [createEmbed('info', 'Panel Interactivo', 'Configura los módulos del bot visualmente.')], components: [new ActionRowBuilder().addComponents(menu)], flags: [MessageFlags.Ephemeral], withResponse: true });
+    const collector = res.resource?.message.createMessageComponentCollector({ componentType: ComponentType.StringSelect, time: 60000 });
+
+    collector.on('collect', async i => {
+        const val = i.values[0];
+        if (val === 'log') {
+            const sel = new ChannelSelectMenuBuilder().setCustomId('c').setPlaceholder('Elige canal de logs').addChannelTypes([ChannelType.GuildText]);
+            await i.reply({ content: 'Selecciona el canal:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
+        } else if (val === 'welcome') {
+            const sel = new ChannelSelectMenuBuilder().setCustomId('w').setPlaceholder('Elige canal de bienvenidas').addChannelTypes([ChannelType.GuildText]);
+            await i.reply({ content: 'Selecciona el canal:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
+        } else if (val === 'autorole') {
+            const sel = new RoleSelectMenuBuilder().setCustomId('r').setPlaceholder('Elige rol automático');
+            await i.reply({ content: 'Selecciona el rol:', components: [new ActionRowBuilder().addComponents(sel)], flags: [MessageFlags.Ephemeral] });
+        }
+    });
+}
