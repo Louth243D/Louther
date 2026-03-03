@@ -313,26 +313,58 @@ async function startFlow(interaction) {
 
                     // 1. Crear Roles
                     for (const roleName of template.roles) {
-                        let perms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory];
-                        if (roleName.includes('Fundador') || roleName.includes('Admin')) perms.push(PermissionFlagsBits.Administrator);
-                        if (roleName.includes('Moderador') || roleName.includes('Staff')) perms.push(PermissionFlagsBits.ManageMessages, PermissionFlagsBits.ModerateMembers);
-                        if (roleName.includes('Desarrollador')) perms.push(PermissionFlagsBits.ManageChannels);
+                        try {
+                            let perms = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory];
+                            let color = '#99aab5'; // Color gris por defecto
 
-                        const role = await guild.roles.create({ name: roleName, permissions: perms, reason: `Generación: ${projectName}` });
-                        createdRoles[roleName] = role;
-                        metadata.roles.push(role.id);
+                            if (roleName.includes('Fundador') || roleName.includes('Líder') || roleName.includes('Admin')) {
+                                perms.push(PermissionFlagsBits.Administrator);
+                                color = '#e74c3c'; // Rojo
+                            }
+                            if (roleName.includes('Moderador') || roleName.includes('Staff')) {
+                                perms.push(PermissionFlagsBits.ManageMessages, PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.KickMembers, PermissionFlagsBits.BanMembers);
+                                color = '#2ecc71'; // Verde
+                            }
+                            if (roleName.includes('Desarrollador') || roleName.includes('🛠')) {
+                                perms.push(PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageWebhooks);
+                                color = '#3498db'; // Azul
+                            }
+                            if (roleName.includes('VIP') || roleName.includes('💎') || roleName.includes('⭐')) {
+                                color = '#f1c40f'; // Oro
+                            }
+
+                            const role = await guild.roles.create({ 
+                                name: roleName, 
+                                permissions: perms, 
+                                color: color,
+                                hoist: true, // Mostrar por separado en la lista de miembros
+                                reason: `Generación: ${projectName}` 
+                            });
+                            createdRoles[roleName] = role;
+                            metadata.roles.push(role.id);
+                        } catch (e) {
+                            console.error(`Error creando rol ${roleName}:`, e.message);
+                        }
                     }
 
                     // 2. Crear Estructura (Categorías y Canales)
                     for (const catData of template.structure) {
+                        const overwrites = [
+                            { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }
+                        ];
+
+                        // Añadir permisos para roles de staff según el nombre del rol en la plantilla
+                        const staffRoles = template.roles.filter(r => r.includes('🛡') || r.includes('Mod') || r.includes('Staff') || r.includes('👑') || r.includes('Admin'));
+                        staffRoles.forEach(rName => {
+                            if (createdRoles[rName]) {
+                                overwrites.push({ id: createdRoles[rName].id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages] });
+                            }
+                        });
+
                         const cat = await guild.channels.create({
                             name: catData.name,
                             type: ChannelType.GuildCategory,
-                            permissionOverwrites: catData.private ? [
-                                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                                { id: createdRoles['🛡 Moderador']?.id || createdRoles['Mod']?.id || guild.id, allow: [PermissionFlagsBits.ViewChannel] },
-                                { id: createdRoles['👑 Fundador']?.id || createdRoles['Admin']?.id || guild.id, allow: [PermissionFlagsBits.ViewChannel] }
-                            ] : []
+                            permissionOverwrites: catData.private ? overwrites : []
                         });
                         metadata.categories.push(cat.id);
 

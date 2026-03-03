@@ -342,8 +342,11 @@ module.exports = {
 
             case 'suggest':
                 const sCont = interaction.options.getString('contenido');
-                const sEmbed = createEmbed('info', '💡 Nueva Sugerencia', sCont, { footer: `Enviada por ${interaction.user.tag}`, thumbnail: interaction.user.displayAvatarURL({ dynamic: true }) });
-                await interaction.reply({ embeds: [createEmbed('success', 'Sugerencia Enviada', 'Tu sugerencia ha sido publicada.')], flags: [MessageFlags.Ephemeral] });
+                const sEmbed = createEmbed('info', '💡 Nueva Sugerencia', sCont, { 
+                    footer: `Enviada por ${interaction.user.username}`, 
+                    thumbnail: interaction.user.displayAvatarURL({ dynamic: true }) 
+                });
+                await interaction.reply({ embeds: [createEmbed('success', 'Sugerencia Enviada', 'Tu sugerencia ha sido publicada en este canal.')], flags: [MessageFlags.Ephemeral] });
                 const sMsg = await interaction.channel.send({ embeds: [sEmbed] });
                 await sMsg.react('✅'); await sMsg.react('❌');
                 break;

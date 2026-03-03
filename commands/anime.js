@@ -186,10 +186,9 @@ module.exports = {
                 break;
         }
 
-        const embedType = (isBot && isNegativeAction) ? 'error' : 'success';
-
-        const embed = createEmbed(embedType, title, desc + thanksMsg + countText, {
-            image: gif
+        const embed = createEmbed('anime', title, desc + thanksMsg, { 
+            image: gif,
+            footer: `Reacción #${count} entre ustedes • Louther Anime`
         });
 
         return reply({ content: senderId === targetId ? null : `<@${user.id}>`, embeds: [embed] });

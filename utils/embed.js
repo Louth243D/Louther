@@ -1,38 +1,42 @@
 const { EmbedBuilder } = require('discord.js');
 
 const COLORS = {
-    success: '#57F287', // Verde
-    error: '#ED4245',   // Rojo
-    warn: '#FEE75C',    // Amarillo
-    info: '#5865F2',    // Azul
-    mod: '#EB459E',     // Naranja/Rosa fuerte para Moderación
-    economy: '#F1C40F'  // Dorado
+    success: '#2ecc71', // Esmeralda
+    error: '#e74c3c',   // Alizarina (Rojo suave)
+    warn: '#f1c40f',    // Girasol
+    info: '#3498db',    // Pedro (Azul suave)
+    mod: '#9b59b6',     // Amatista (Púrpura)
+    economy: '#f39c12', // Naranja oscuro
+    anime: '#ff79c6',   // Rosa neón
+    rpg: '#82aaff'      // Azul RPG
 };
 
 const ICONS = {
-    success: '✅',
-    error: '❌',
-    warn: '⚠️',
-    info: 'ℹ️',
-    mod: '🔨',
-    economy: '💰'
+    success: '✨',
+    error: '🚫',
+    warn: '🚨',
+    info: '💎',
+    mod: '🛡️',
+    economy: '💵',
+    anime: '🌸',
+    rpg: '⚔️'
 };
 
 /**
- * Genera un embed estandarizado para el bot
- * @param {string} type - Tipo de embed (success, error, warn, info, mod, economy)
+ * Genera un embed estandarizado y profesional para el bot
+ * @param {string} type - Tipo de embed
  * @param {string} title - Título del embed
  * @param {string} description - Descripción del embed
- * @param {object} options - Opciones adicionales (fields, thumbnail, footer, etc)
+ * @param {object} options - Opciones adicionales
  */
 function createEmbed(type, title, description, options = {}) {
     const embed = new EmbedBuilder()
-        .setTitle(`${ICONS[type] || ''} ${title}`)
-        .setColor(COLORS[type] || COLORS.info)
-        .setTimestamp();
+        .setTitle(`${ICONS[type] || ''} ${title.toUpperCase()}`)
+        .setColor(COLORS[type] || COLORS.info);
 
     if (description && description.trim().length > 0) {
-        embed.setDescription(description);
+        // Mejoramos la visual de la descripción con un formato más limpio
+        embed.setDescription(`\n${description}\n\u200b`);
     }
 
     if (options.fields && Array.isArray(options.fields)) {
@@ -47,10 +51,16 @@ function createEmbed(type, title, description, options = {}) {
         embed.setImage(options.image);
     }
 
-    if (options.footer) {
-        embed.setFooter({ text: options.footer, iconURL: options.footerIcon });
-    } else {
-        embed.setFooter({ text: 'Bot Multifunción • v1.0' });
+    // Footer estilizado con versión y marca
+    const footerText = options.footer || 'Louther Bot • El compañero definitivo para tu comunidad';
+    embed.setFooter({ 
+        text: footerText, 
+        iconURL: options.footerIcon || 'https://cdn-icons-png.flaticon.com/512/4712/4712139.png' 
+    });
+
+    // Añadir timestamp solo si no se desactiva explícitamente
+    if (options.timestamp !== false) {
+        embed.setTimestamp();
     }
 
     return embed;

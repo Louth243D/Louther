@@ -178,8 +178,17 @@ module.exports = {
                     );
 
                     const sorted = leaderboardData.sort((a, b) => b.balance - a.balance).slice(0, 10);
-                    const lbText = sorted.map((u, i) => `${i + 1}. <@${u.id}> - **$${u.balance.toLocaleString()}**`).join('\n') || 'Nadie tiene dinero aún.';
-                    return reply({ embeds: [createEmbed('economy', 'Top Más Ricos del Servidor', lbText)] });
+                    const lbText = sorted.map((u, i) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const rank = medals[i] || `**#${i + 1}**`;
+                        return `${rank} <@${u.id}> — **$${u.balance.toLocaleString()}**`;
+                    }).join('\n') || 'Nadie tiene dinero aún.';
+                    
+                    const embed = createEmbed('economy', 'Ranking de Riqueza', lbText, {
+                        footer: `Mostrando el Top ${sorted.length} del servidor`,
+                        thumbnail: interaction.guild.iconURL({ dynamic: true })
+                    });
+                    return reply({ embeds: [embed] });
                 }
 
                 case 'give': {

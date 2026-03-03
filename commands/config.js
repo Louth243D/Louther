@@ -106,11 +106,16 @@ module.exports = {
           const rContent = interaction.options.getString('contenido');
           config.rules = rContent.replace(/\\n/g, '\n');
           await DataManager.saveFile(`configs/${guildId}.json`, config);
-          return interaction.reply({ embeds: [createEmbed('success', 'Reglas Actualizadas', 'Se han guardado las nuevas reglas con éxito.')] });
+          const rEmbed = createEmbed('success', 'Reglas Actualizadas', 'Se han guardado las nuevas reglas con éxito. Usa `/config view_rules` para verlas.');
+          return interaction.reply({ embeds: [rEmbed] });
         }
 
         case 'view_rules': {
-          return interaction.reply({ embeds: [createEmbed('info', `📜 REGLAS - ${interaction.guild.name}`, config.rules)] });
+          const vrEmbed = createEmbed('info', `📜 REGLAS DEL SERVIDOR`, config.rules, {
+              footer: interaction.guild.name,
+              thumbnail: interaction.guild.iconURL({ dynamic: true })
+          });
+          return interaction.reply({ embeds: [vrEmbed] });
         }
 
         case 'setup': {
