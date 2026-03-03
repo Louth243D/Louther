@@ -6,7 +6,8 @@ module.exports = {
   name: Events.MessageDelete,
   once: false,
   async execute(message) {
-    if (!message.guild || message.author?.bot) return;
+    // Si el mensaje no está en caché o es de un bot, no hacemos nada.
+    if (!message || !message.author || message.author.bot) return;
     try {
       const content = message.content ? (message.content.length > 1000 ? message.content.substring(0, 997) + '...' : message.content) : '*Sin contenido de texto*';
       
