@@ -348,6 +348,7 @@ async function handleInteractiveSetup(interaction, config, guildId) {
     const menu = new StringSelectMenuBuilder().setCustomId('cfg_menu').setPlaceholder('Elige un módulo para configurar')
         .addOptions([
             { label: 'Canal de Logs', value: 'log', emoji: '📝' },
+            { label: 'Nivel de Logs', value: 'log_level', emoji: '📊' },
             { label: 'Canal de Bienvenidas', value: 'welcome', emoji: '👋' },
             { label: 'Rol Automático', value: 'autorole', emoji: '👤' },
             { label: 'Cerrar Panel', value: 'close', emoji: '❌' }

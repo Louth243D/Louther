@@ -8,7 +8,7 @@ const path = require('path');
  * @param {string} serverName - Nombre del servidor
  * @param {string} backgroundUrl - URL de la imagen de fondo (opcional)
  */
-async function generateWelcomeImage(avatarUrl, username, serverName, backgroundUrl) {
+async function generateWelcomeImage(avatarUrl, username, discriminator, serverName, backgroundUrl) {
     const canvas = createCanvas(800, 350);
     const ctx = canvas.getContext('2d');
 
@@ -18,7 +18,6 @@ async function generateWelcomeImage(avatarUrl, username, serverName, backgroundU
             const bg = await loadImage(backgroundUrl);
             ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
         } else {
-            // Fondo degradado por defecto si no hay URL
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             gradient.addColorStop(0, '#1a1a2e');
             gradient.addColorStop(1, '#16213e');
@@ -26,31 +25,25 @@ async function generateWelcomeImage(avatarUrl, username, serverName, backgroundU
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
     } catch (e) {
-        // Fallback a color sólido si falla la carga de imagen
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Capa de oscurecimiento para legibilidad
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Dibujar Avatar (Circular)
+    // 2. Dibujar Avatar
     ctx.save();
     ctx.beginPath();
     ctx.arc(400, 100, 75, 0, Math.PI * 2, true);
     ctx.closePath();
     ctx.clip();
-
     try {
         const avatar = await loadImage(avatarUrl.replace(/\.webp$/, '.png'));
         ctx.drawImage(avatar, 325, 25, 150, 150);
-    } catch (e) {
-        // Si falla el avatar, no dibujamos nada (quedará el círculo del clip)
-    }
+    } catch (e) {}
     ctx.restore();
 
-    // Borde del avatar
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 5;
     ctx.beginPath();
@@ -59,29 +52,31 @@ async function generateWelcomeImage(avatarUrl, username, serverName, backgroundU
 
     // 3. Dibujar Texto
     ctx.textAlign = 'center';
-    
-    // Sombra para el texto
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 5;
     ctx.shadowOffsetY = 5;
 
-    // "BIENVENID@"
     ctx.font = 'bold 50px sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText('BIENVENID@', 400, 230);
 
-    // Nombre de Usuario (con color destacado y borde)
-    ctx.font = 'bold 65px sans-serif';
-    ctx.fillStyle = '#00fbff';
-    ctx.fillText(username.toUpperCase(), 400, 295);
+    const userTag = `${username}#${discriminator}`;
+    let fontSize = 65;
+    if (userTag.length > 15) {
+        fontSize = 45;
+    } else if (userTag.length > 10) {
+        fontSize = 55;
+    }
     
-    // Resetear sombra para texto pequeño
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = '#00fbff';
+    ctx.fillText(userTag.toUpperCase(), 400, 295);
+    
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
 
-    // Servidor o Mensaje Extra
     ctx.font = 'italic 28px sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(serverName.toUpperCase(), 400, 335);
