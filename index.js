@@ -1,4 +1,5 @@
 const fs = require('fs');
+// Versión del bot: 1.1.0 - Music Suggest System Update
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
 const keepAlive = require('./utils/keepAlive.js');
