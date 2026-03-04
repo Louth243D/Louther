@@ -31,8 +31,11 @@ const ICONS = {
  */
 function createEmbed(type, title, description, options = {}) {
     const embed = new EmbedBuilder()
-        .setTitle(`${ICONS[type] || ''} ${title.toUpperCase()}`)
         .setColor(COLORS[type] || COLORS.info);
+
+    if (title) {
+        embed.setTitle(`${ICONS[type] || ''} ${title.toUpperCase()}`);
+    }
 
     if (description && description.trim().length > 0) {
         // Mejoramos la visual de la descripción con un formato más limpio
