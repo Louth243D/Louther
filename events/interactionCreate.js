@@ -1,6 +1,7 @@
 const { MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
 const { checkCooldown } = require('../utils/cooldown.js');
+const { getSongLyrics } = require('../utils/lyricsUtil.js');
 
 module.exports = {
   name: 'interactionCreate',
@@ -49,6 +50,42 @@ module.exports = {
               setTimeout(() => {
                   interaction.channel.delete().catch(() => {});
               }, 5000);
+              return;
+          }
+
+          // Manejar Lyrics de Música
+          if (interaction.customId === 'music_lyrics') {
+              await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+              
+              const embed = interaction.message.embeds[0];
+              const songField = embed.fields.find(f => f.name === '🎶 Canción');
+              const authorField = embed.fields.find(f => f.name === '🎤 Autor');
+
+              if (!songField || !authorField) {
+                  return interaction.editReply({ content: '❌ No pude extraer la información de la canción.' });
+              }
+
+              const query = `${songField.value} ${authorField.value}`.replace(/`/g, '');
+              const lyricsChunks = await getSongLyrics(query);
+
+              if (!lyricsChunks || lyricsChunks.length === 0) {
+                  return interaction.editReply({ embeds: [createEmbed('warn', 'Lyrics No Encontradas', `No se encontró la letra para: **${query}**`)] });
+              }
+
+              // Enviar el primer fragmento
+              await interaction.editReply({ 
+                  embeds: [createEmbed('info', `📜 Letras: ${query}`, lyricsChunks[0])] 
+              });
+
+              // Si hay más fragmentos, enviarlos como followUps
+              if (lyricsChunks.length > 1) {
+                  for (let i = 1; i < lyricsChunks.length; i++) {
+                      await interaction.followUp({ 
+                          embeds: [createEmbed('info', null, lyricsChunks[i])], 
+                          flags: [MessageFlags.Ephemeral] 
+                      });
+                  }
+              }
               return;
           }
       }

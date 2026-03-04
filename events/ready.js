@@ -1,4 +1,5 @@
 const { Events } = require('discord.js');
+const { initMusicCron } = require('../utils/musicCron.js');
 
 module.exports = {
   name: Events.ClientReady,
@@ -7,6 +8,9 @@ module.exports = {
     const tag = client.user?.tag ?? 'Bot';
     const totalCommands = client.commands.size;
     console.log(`Conectado como ${tag}. Cargados ${totalCommands} comandos en memoria.`);
+    
+    // Inicializar sistema de sugerencias musicales
+    await initMusicCron(client);
     
     try {
       const guilds = await client.guilds.fetch();
