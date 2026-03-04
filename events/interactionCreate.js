@@ -89,11 +89,19 @@ module.exports = {
                   embeds: [createEmbed('info', `📜 Letras: ${query}`, lyricsChunks[0])] 
               });
 
-              // Si hay más fragmentos, enviarlos como followUps
+              // Si hay más fragmentos, enviarlos como followUps (MÁXIMO 2 más para evitar spam)
               if (lyricsChunks.length > 1) {
-                  for (let i = 1; i < lyricsChunks.length; i++) {
+                  const maxExtraEmbeds = 2;
+                  for (let i = 1; i < Math.min(lyricsChunks.length, maxExtraEmbeds + 1); i++) {
                       await interaction.followUp({ 
                           embeds: [createEmbed('info', null, lyricsChunks[i])], 
+                          flags: [MessageFlags.Ephemeral] 
+                      });
+                  }
+
+                  if (lyricsChunks.length > maxExtraEmbeds + 1) {
+                      await interaction.followUp({ 
+                          content: `*... La letra es demasiado larga. Se han mostrado los primeros fragmentos.*`,
                           flags: [MessageFlags.Ephemeral] 
                       });
                   }

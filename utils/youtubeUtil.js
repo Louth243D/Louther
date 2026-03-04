@@ -15,22 +15,53 @@ const keywords = [
 async function getRandomMusicSuggestion() {
     try {
         const keyword = keywords[Math.floor(Math.random() * keywords.length)];
-        // Añadimos 'music' a la búsqueda para forzar resultados musicales
-        const results = await youtube.searchVideos(keyword, 15);
+        
+        // Buscamos más resultados (25) para tener un buen margen de filtrado
+        const results = await youtube.searchVideos(keyword, 25, { type: 'video' });
         
         if (!results || results.length === 0) return null;
 
-        // Filtrar resultados que parezcan noticias o directos (muy básico)
-        const musicVideos = results.filter(v => {
-            const title = v.title.toLowerCase();
-            return !title.includes('news') && !title.includes('noticias') && !title.includes('live') && !title.includes('directo');
-        });
-
-        const finalResults = musicVideos.length > 0 ? musicVideos : results;
-        const video = finalResults[Math.floor(Math.random() * finalResults.length)];
+        // Filtrado estricto para asegurar que sea MÚSICA
+        const musicVideos = [];
         
-        // Obtener detalles adicionales para el autor y thumbnail de alta calidad
-        const fullVideo = await youtube.getVideoByID(video.id);
+        for (const v of results) {
+            const title = v.title.toLowerCase();
+            const channel = v.channel?.title?.toLowerCase() || '';
+
+            // Blacklist de palabras que indican que NO es música (Reddit, noticias, tutoriales, etc.)
+            const blacklist = [
+                'news', 'noticias', 'live', 'directo', 'reddit', 'r/', 'confessions', 
+                'story', 'history', 'tutorial', 'how to', 'podcast', 'gameplay', 
+                'walkthrough', 'review', 'reacción', 'reaction', 'breaking'
+            ];
+
+            if (blacklist.some(word => title.includes(word) || channel.includes(word))) continue;
+
+            // Si pasa el filtro de palabras, lo añadimos
+            musicVideos.push(v);
+        }
+
+        if (musicVideos.length === 0) return null;
+
+        // Elegimos uno al azar de los filtrados
+        const selectedVideo = musicVideos[Math.floor(Math.random() * musicVideos.length)];
+        
+        // Obtener detalles completos para verificar la categoría (ID 10 = Music)
+        const fullVideo = await youtube.getVideoByID(selectedVideo.id);
+        
+        // Si no es categoría música, intentamos con otro de la lista (máximo 3 intentos)
+        if (fullVideo.categoryId !== '10') {
+            console.log(`[YouTubeUtil] El video "${fullVideo.title}" no es categoría música (ID: ${fullVideo.categoryId}). Filtrando...`);
+            // Simplemente buscamos otro de la lista filtrada que ya tenemos
+            const backupVideo = musicVideos.find(v => v.id !== fullVideo.id);
+            if (!backupVideo) return null;
+            return await youtube.getVideoByID(backupVideo.id).then(fv => ({
+                title: fv.title,
+                author: fv.channel.title,
+                url: `https://www.youtube.com/watch?v=${fv.id}`,
+                thumbnail: fv.thumbnails.maxres?.url || fv.thumbnails.high?.url || fv.thumbnails.default?.url
+            }));
+        }
 
         return {
             title: fullVideo.title,
