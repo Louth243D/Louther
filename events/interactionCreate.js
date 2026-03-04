@@ -74,14 +74,22 @@ module.exports = {
               const cleanAuthor = authorField.value.replace(/`/g, '').trim();
               
               // Si el título ya contiene al autor, no lo repetimos para no confundir a la API
-              const query = cleanTitle.toLowerCase().includes(cleanAuthor.toLowerCase()) 
+              let query = cleanTitle.toLowerCase().includes(cleanAuthor.toLowerCase()) 
                   ? cleanTitle 
                   : `${cleanAuthor} ${cleanTitle}`;
 
-              const lyricsChunks = await getSongLyrics(query, cleanAuthor);
+              let lyricsChunks = await getSongLyrics(query, cleanAuthor);
+
+              // --- BÚSQUEDA DE RESPALDO ---
+              // Si no encontró nada con "Autor + Título", intentamos solo con el "Título"
+              // Esto ayuda mucho cuando el autor de YT es una discográfica (ej: Sony, Vevo)
+              if (!lyricsChunks || lyricsChunks.length === 0) {
+                  console.log(`[InteractionCreate] No se encontró con autor. Intentando solo con título: "${cleanTitle}"`);
+                  lyricsChunks = await getSongLyrics(cleanTitle, '');
+              }
 
               if (!lyricsChunks || lyricsChunks.length === 0) {
-                  return interaction.editReply({ embeds: [createEmbed('warn', 'Lyrics No Encontradas', `No se encontró la letra para: **${query}**`)] });
+                  return interaction.editReply({ embeds: [createEmbed('warn', 'Lyrics No Encontradas', `No se encontró la letra para: **${cleanTitle}**`)] });
               }
 
               // Enviar el primer fragmento

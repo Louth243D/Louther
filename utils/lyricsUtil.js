@@ -21,15 +21,20 @@ async function getSongLyrics(query, artistName) {
         if (searches.length === 0) return null;
 
         // Intentar encontrar un resultado que coincida mejor con el artista
-        let song = searches.find(s => 
-            s.artist.name.toLowerCase().includes(artistName.toLowerCase()) ||
-            artistName.toLowerCase().includes(s.artist.name.toLowerCase())
-        );
+        let song;
+        if (artistName) {
+            song = searches.find(s => 
+                s.artist.name.toLowerCase().includes(artistName.toLowerCase()) ||
+                artistName.toLowerCase().includes(s.artist.name.toLowerCase())
+            );
+        }
 
-        // Si no hay coincidencia clara de artista, pero el primer resultado parece ser la canción (por título), lo usamos.
+        // Si no hay coincidencia clara de artista o no se proporcionó uno, usamos el primero que parezca correcto
         if (!song) {
             song = searches[0];
-            console.warn(`[LyricsUtil] No hubo coincidencia exacta de artista. Usando primer resultado: ${song.title} por ${song.artist.name}`);
+            if (artistName) {
+                console.warn(`[LyricsUtil] No hubo coincidencia exacta para "${artistName}". Usando primer resultado: ${song.title} por ${song.artist.name}`);
+            }
         } else {
             console.log(`[LyricsUtil] Coincidencia encontrada: ${song.title} por ${song.artist.name}`);
         }
