@@ -1,4 +1,4 @@
-const { MessageFlags, PermissionFlagsBits } = require('discord.js');
+const { MessageFlags, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
 const { checkCooldown } = require('../utils/cooldown.js');
 const { getSongLyrics } = require('../utils/lyricsUtil.js');
