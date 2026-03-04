@@ -16,65 +16,63 @@ async function getRandomMusicSuggestion() {
     try {
         const keyword = keywords[Math.floor(Math.random() * keywords.length)];
         
-        // Buscamos más resultados (25) para tener un buen margen de filtrado
-        const results = await youtube.searchVideos(keyword, 25, { type: 'video' });
+        // Buscamos muchos resultados para filtrar bien
+        const results = await youtube.searchVideos(keyword, 30, { type: 'video' });
         
         if (!results || results.length === 0) return null;
 
-        // Filtrado estricto para asegurar que sea MÚSICA
         const musicVideos = [];
-        
+        const blacklist = [
+            'news', 'noticias', 'live', 'directo', 'reddit', 'r/', 'confessions', 
+            'story', 'history', 'tutorial', 'how to', 'podcast', 'gameplay', 
+            'walkthrough', 'review', 'reacción', 'reaction', 'breaking', 'explicación',
+            'documentary', 'documental', 'biografía', 'biography', 'facts', 'datos',
+            'curiosidades', 'top 10', 'top 5', 'analysis', 'análisis', 'essay',
+            'video essay', 'crítica', 'criticism', 'theory', 'teoría', 'lessons',
+            'clases', 'course', 'curso', 'behind the scenes', 'making of', 'entrevista',
+            'interview', 'vlog', 'blog', 'journey', 'evolution', 'evolución',
+            'the story of', 'la historia de', 'meaning of', 'significado de',
+            'roblox', 'minecraft', 'brainrot', 'steal a', 'skibidi', 'gaming', 'funny moments',
+            'meme', 'compilation', 'compilación', 'shorts', 'reels', 'tiktok'
+        ];
+
         for (const v of results) {
             const title = v.title.toLowerCase();
             const channel = v.channel?.title?.toLowerCase() || '';
 
-            // Blacklist de palabras que indican que NO es música (Reddit, noticias, tutoriales, etc.)
-            const blacklist = [
-                'news', 'noticias', 'live', 'directo', 'reddit', 'r/', 'confessions', 
-                'story', 'history', 'tutorial', 'how to', 'podcast', 'gameplay', 
-                'walkthrough', 'review', 'reacción', 'reaction', 'breaking', 'explicación',
-                'documentary', 'documental', 'biografía', 'biography', 'facts', 'datos',
-                'curiosidades', 'top 10', 'top 5', 'analysis', 'análisis', 'essay',
-                'video essay', 'crítica', 'criticism', 'theory', 'teoría', 'lessons',
-                'clases', 'course', 'curso', 'behind the scenes', 'making of', 'entrevista',
-                'interview', 'vlog', 'blog', 'journey', 'evolution', 'evolución',
-                'the story of', 'la historia de', 'meaning of', 'significado de'
-            ];
-
+            // 1. Filtro de Blacklist
             if (blacklist.some(word => title.includes(word) || channel.includes(word))) continue;
 
-            // Si pasa el filtro de palabras, lo añadimos
+            // 2. Filtro de caracteres no deseados (opcional, pero ayuda a evitar spam de otros idiomas si no se desea)
+            if (title.includes('【') || title.includes('】') || title.includes('「') || title.includes('」')) continue;
+
             musicVideos.push(v);
         }
 
         if (musicVideos.length === 0) return null;
 
-        // Elegimos uno al azar de los filtrados
-        const selectedVideo = musicVideos[Math.floor(Math.random() * musicVideos.length)];
-        
-        // Obtener detalles completos para verificar la categoría (ID 10 = Music)
-        const fullVideo = await youtube.getVideoByID(selectedVideo.id);
-        
-        // Si no es categoría música, intentamos con otro de la lista (máximo 3 intentos)
-        if (fullVideo.categoryId !== '10') {
-            console.log(`[YouTubeUtil] El video "${fullVideo.title}" no es categoría música (ID: ${fullVideo.categoryId}). Filtrando...`);
-            // Simplemente buscamos otro de la lista filtrada que ya tenemos
-            const backupVideo = musicVideos.find(v => v.id !== fullVideo.id);
-            if (!backupVideo) return null;
-            return await youtube.getVideoByID(backupVideo.id).then(fv => ({
-                title: fv.title,
-                author: fv.channel.title,
-                url: `https://www.youtube.com/watch?v=${fv.id}`,
-                thumbnail: fv.thumbnails.maxres?.url || fv.thumbnails.high?.url || fv.thumbnails.default?.url
-            }));
+        // Intentar encontrar uno que sea REALMENTE música
+        for (let i = 0; i < Math.min(musicVideos.length, 5); i++) {
+            const selectedVideo = musicVideos[Math.floor(Math.random() * musicVideos.length)];
+            const fullVideo = await youtube.getVideoByID(selectedVideo.id);
+            
+            // FILTRO DEFINITIVO: Categoría Música (10) Y Duración razonable (1.5 min a 10 min)
+            // La duración viene en formato ISO 8601 (ej: PT4M30S)
+            const duration = fullVideo.duration; 
+            const isMusic = fullVideo.categoryId === '10';
+            
+            // Si es categoría música, lo aceptamos de inmediato
+            if (isMusic) {
+                return {
+                    title: fullVideo.title,
+                    author: fullVideo.channel.title,
+                    url: `https://www.youtube.com/watch?v=${fullVideo.id}`,
+                    thumbnail: fullVideo.thumbnails.maxres?.url || fullVideo.thumbnails.high?.url || fullVideo.thumbnails.default?.url
+                };
+            }
         }
 
-        return {
-            title: fullVideo.title,
-            author: fullVideo.channel.title,
-            url: `https://www.youtube.com/watch?v=${fullVideo.id}`,
-            thumbnail: fullVideo.thumbnails.maxres?.url || fullVideo.thumbnails.high?.url || fullVideo.thumbnails.default?.url
-        };
+        return null;
     } catch (error) {
         console.error('[YouTubeUtil] Error al obtener sugerencia musical:', error.message);
         return null;
