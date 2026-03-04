@@ -2,6 +2,8 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder
 const { createEmbed } = require('../utils/embed.js');
 const DataManager = require('../utils/dataManager.js');
 const { setupGuildCron, stopGuildCron } = require('../utils/musicCron.js');
+const { getRandomMusicSuggestion } = require('../utils/youtubeUtil.js');
+const { ActionRowBuilder: ActionRow, ButtonBuilder: Button, ButtonStyle } = require('discord.js');
 
 module.exports = {
     category: '🎵 MÚSICA',
@@ -17,7 +19,10 @@ module.exports = {
                 .setDescription('Desactiva el sistema de sugerencias'))
         .addSubcommand(sub => 
             sub.setName('info')
-                .setDescription('Muestra la configuración actual')),
+                .setDescription('Muestra la configuración actual'))
+        .addSubcommand(sub => 
+            sub.setName('test')
+                .setDescription('Realiza una prueba inmediata del sistema de sugerencias')),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -32,6 +37,35 @@ module.exports = {
         }
 
         switch (subcommand) {
+            case 'test': {
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+                
+                const suggestion = await getRandomMusicSuggestion();
+                if (!suggestion) {
+                    return interaction.editReply({ content: '❌ No pude obtener una sugerencia musical. Revisa tu `YOUTUBE_API_KEY`.' });
+                }
+
+                const embed = createEmbed('info', '🧪 Prueba: Sugerencia Musical', 'Esta es una prueba manual del sistema.', {
+                    fields: [
+                        { name: '🎶 Canción', value: `\`${suggestion.title}\``, inline: false },
+                        { name: '🎤 Autor', value: `\`${suggestion.author}\``, inline: true },
+                        { name: '🔗 Enlace', value: `[Ver en YouTube](${suggestion.url})`, inline: true }
+                    ],
+                    thumbnail: suggestion.thumbnail,
+                    color: '#9b59b6' // Color púrpura para diferenciar de la automática
+                });
+
+                const row = new ActionRow().addComponents(
+                    new Button()
+                        .setCustomId('music_lyrics')
+                        .setLabel('Ver Lyrics')
+                        .setStyle(ButtonStyle.Primary)
+                );
+
+                await interaction.channel.send({ embeds: [embed], components: [row] });
+                return interaction.editReply({ content: '✅ ¡Prueba enviada con éxito!' });
+            }
+
             case 'set': {
                 const initialEmbed = createEmbed('info', '🎵 Configuración de Sugerencias Musicales', 
                     'Este sistema enviará sugerencias musicales de YouTube automáticamente.\n\n**Paso 1:** Selecciona el canal donde se enviarán las sugerencias.');
