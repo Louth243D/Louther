@@ -32,7 +32,13 @@ async function getRandomMusicSuggestion() {
             const blacklist = [
                 'news', 'noticias', 'live', 'directo', 'reddit', 'r/', 'confessions', 
                 'story', 'history', 'tutorial', 'how to', 'podcast', 'gameplay', 
-                'walkthrough', 'review', 'reacción', 'reaction', 'breaking'
+                'walkthrough', 'review', 'reacción', 'reaction', 'breaking', 'explicación',
+                'documentary', 'documental', 'biografía', 'biography', 'facts', 'datos',
+                'curiosidades', 'top 10', 'top 5', 'analysis', 'análisis', 'essay',
+                'video essay', 'crítica', 'criticism', 'theory', 'teoría', 'lessons',
+                'clases', 'course', 'curso', 'behind the scenes', 'making of', 'entrevista',
+                'interview', 'vlog', 'blog', 'journey', 'evolution', 'evolución',
+                'the story of', 'la historia de', 'meaning of', 'significado de'
             ];
 
             if (blacklist.some(word => title.includes(word) || channel.includes(word))) continue;
