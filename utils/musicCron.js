@@ -95,7 +95,11 @@ async function sendMusicSuggestion(client, guildId, guildConfig) {
             new ButtonBuilder()
                 .setCustomId('music_lyrics')
                 .setLabel('Ver Lyrics')
-                .setStyle(ButtonStyle.Primary)
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('music_skip')
+                .setLabel('🔄 Otra Sugerencia')
+                .setStyle(ButtonStyle.Secondary)
         );
 
         await channel.send({ embeds: [embed], components: [row] });

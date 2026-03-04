@@ -1,7 +1,8 @@
-const { MessageFlags, PermissionFlagsBits } = require('discord.js');
-const { createEmbed } = require('../utils/embed.js');
-const { checkCooldown } = require('../utils/cooldown.js');
 const { getSongLyrics } = require('../utils/lyricsUtil.js');
+const { getRandomMusicSuggestion } = require('../utils/youtubeUtil.js');
+
+// Mapa para los cooldowns del botón skip (Clave: userId, Valor: timestamp)
+const skipCooldowns = new Map();
 
 module.exports = {
   name: 'interactionCreate',
@@ -51,6 +52,55 @@ module.exports = {
                   interaction.channel.delete().catch(() => {});
               }, 5000);
               return;
+          }
+
+          // Manejar Botón de Skip (Otra Sugerencia)
+          if (interaction.customId === 'music_skip') {
+              const now = Date.now();
+              const cooldownAmount = 10 * 1000; // 10 segundos
+              const expirationTime = skipCooldowns.get(interaction.user.id) + cooldownAmount;
+
+              if (skipCooldowns.has(interaction.user.id) && now < expirationTime) {
+                  const timeLeft = (expirationTime - now) / 1000;
+                  return interaction.reply({ 
+                      content: `⚠️ ¡Espera **${timeLeft.toFixed(1)}s** antes de pedir otra canción!`, 
+                      flags: [MessageFlags.Ephemeral] 
+                  });
+              }
+
+              skipCooldowns.set(interaction.user.id, now);
+              setTimeout(() => skipCooldowns.delete(interaction.user.id), cooldownAmount);
+
+              await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+              const suggestion = await getRandomMusicSuggestion();
+              if (!suggestion) {
+                  return interaction.editReply({ content: '❌ No pude encontrar otra sugerencia en este momento. Inténtalo de nuevo.' });
+              }
+
+              const embed = createEmbed('info', '🎵 Nueva Sugerencia Musical', '¡Aquí tienes otra canción para ti!', {
+                  fields: [
+                      { name: '🎶 Canción', value: `\`${suggestion.title}\``, inline: false },
+                      { name: '🎤 Autor', value: `\`${suggestion.author}\``, inline: true },
+                      { name: '🔗 Enlace', value: `[Ver en YouTube](${suggestion.url})`, inline: true }
+                  ],
+                  thumbnail: suggestion.thumbnail,
+                  color: '#5865F2'
+              });
+
+              const row = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder()
+                      .setCustomId('music_lyrics')
+                      .setLabel('Ver Lyrics')
+                      .setStyle(ButtonStyle.Primary),
+                  new ButtonBuilder()
+                      .setCustomId('music_skip')
+                      .setLabel('🔄 Otra Sugerencia')
+                      .setStyle(ButtonStyle.Secondary)
+              );
+
+              await interaction.message.edit({ embeds: [embed], components: [row] });
+              return interaction.editReply({ content: '✅ Sugerencia actualizada.' });
           }
 
           // Manejar Lyrics de Música

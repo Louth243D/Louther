@@ -68,14 +68,11 @@ async function getRandomMusicSuggestion() {
             // Barajar los resultados para mayor aleatoriedad
             const shuffled = musicVideos.sort(() => 0.5 - Math.random());
 
+            // --- PASO 1: Intentar encontrar uno que sea categoría Música ---
             for (const selectedVideo of shuffled) {
                 const fullVideo = await youtube.getVideoByID(selectedVideo.id);
-                
-                // FILTRO DEFINITIVO: Categoría Música (10)
-                const isMusic = fullVideo.categoryId === '10';
-                
-                if (isMusic) {
-                    console.log(`[YouTubeUtil] ¡Canción encontrada!: ${fullVideo.title}`);
+                if (fullVideo.categoryId === '10') {
+                    console.log(`[YouTubeUtil] ¡Canción encontrada (Cat 10)!: ${fullVideo.title}`);
                     return {
                         title: fullVideo.title,
                         author: fullVideo.channel.title,
@@ -84,6 +81,17 @@ async function getRandomMusicSuggestion() {
                     };
                 }
             }
+
+            // --- PASO 2: Si no hubo suerte, aceptar el primero que pasó la blacklist (aunque no sea Cat 10) ---
+            const fallback = shuffled[0];
+            const fv = await youtube.getVideoByID(fallback.id);
+            console.log(`[YouTubeUtil] Usando fallback (No Cat 10): ${fv.title}`);
+            return {
+                title: fv.title,
+                author: fv.channel.title,
+                url: `https://www.youtube.com/watch?v=${fv.id}`,
+                thumbnail: fv.thumbnails.maxres?.url || fv.thumbnails.high?.url || fv.thumbnails.default?.url
+            };
             
             attempts++;
         } catch (error) {
