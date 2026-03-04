@@ -1,3 +1,6 @@
+const { MessageFlags, PermissionFlagsBits } = require('discord.js');
+const { createEmbed } = require('../utils/embed.js');
+const { checkCooldown } = require('../utils/cooldown.js');
 const { getSongLyrics } = require('../utils/lyricsUtil.js');
 const { getRandomMusicSuggestion } = require('../utils/youtubeUtil.js');
 
