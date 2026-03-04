@@ -50,21 +50,58 @@ module.exports = {
 
           // Generar Imagen de Bienvenida
           const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256 });
-          const welcomeBuffer = await generateWelcomeImage(
-            avatarUrl, 
-            member.user.username, 
-            member.guild.name, 
-            config.welcomeBackground
-          );
+          
+          let welcomeBuffer;
+          let hasImageError = false;
+
+          try {
+            // Intentar generar con el fondo configurado
+            welcomeBuffer = await generateWelcomeImage(
+              avatarUrl, 
+              member.user.username, 
+              member.user.discriminator,
+              member.guild.name, 
+              config.welcomeBackground,
+              config.welcomeBannerText
+            );
+
+            // Verificación simple: si se configuró fondo pero loadImage falló (esto requeriría cambiar imageGenerator)
+            // Por ahora, si config.welcomeBackground existe y falla, lo manejamos.
+          } catch (err) {
+            hasImageError = true;
+            // Fallback a imagen sin fondo (gradiente)
+            welcomeBuffer = await generateWelcomeImage(
+              avatarUrl, 
+              member.user.username, 
+              member.user.discriminator,
+              member.guild.name, 
+              null,
+              config.welcomeBannerText
+            );
+          }
+
           const attachment = new AttachmentBuilder(welcomeBuffer, { name: 'welcome.png' });
 
-          const welcomeEmbed = createEmbed('info', `¡BIENVENIDO, ${member.user.username.toUpperCase()}!`, finalMsg, {
+          const userTag = member.user.discriminator !== '0' ? `${member.user.username}#${member.user.discriminator}` : member.user.username;
+
+          const welcomeEmbed = createEmbed('info', `¡BIENVENIDO, ${userTag.toUpperCase()}!`, finalMsg, {
             thumbnail: member.user.displayAvatarURL({ dynamic: true }),
             footer: `Tú eres el miembro #${member.guild.memberCount}`,
             image: 'attachment://welcome.png'
           });
 
           await welcomeChannel.send({ content: `<@${member.id}>`, embeds: [welcomeEmbed], files: [attachment] });
+
+          // Si hubo error con la imagen personalizada, avisar
+          if (hasImageError && config.welcomeBackground) {
+              const errorEmbed = createEmbed('warn', '⚠️ Error de Configuración', 
+                  'La imagen de fondo de bienvenida no se pudo cargar.\n\n' +
+                  '**Posibles causas:**\n' +
+                  '• El enlace no es una imagen directa (debe terminar en .jpg, .png, etc)\n' +
+                  '• El enlace es privado o ha expirado.\n\n' +
+                  '**Solución:** Usa `/config quick_edit clave:welcomeBackground valor:URL_DIRECTA`');
+              await welcomeChannel.send({ embeds: [errorEmbed] });
+          }
         }
       }
 

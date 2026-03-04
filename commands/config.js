@@ -41,6 +41,7 @@ const defaultConfig = {
     welcomeChannelId: null,
     welcomeMessage: '¡Bienvenido/a {user} a {server}!',
     welcomeBackground: null,
+    welcomeBannerText: 'BIENVENIDO',
     rules: 'No se han configurado reglas aún.',
     autoRoleId: null,
     levelRewards: {}
@@ -60,7 +61,8 @@ module.exports = {
         .addStringOption(o => o.setName('clave').setDescription('Opción a modificar').addChoices(
             { name: 'Prefijo', value: 'prefix' },
             { name: 'Mensaje de Bienvenida', value: 'welcomeMessage' },
-            { name: 'Fondo de Bienvenida (URL)', value: 'welcomeBackground' }
+            { name: 'Fondo de Bienvenida (URL)', value: 'welcomeBackground' },
+            { name: 'Texto en Imagen de Bienvenida', value: 'welcomeBannerText' }
         ).setRequired(true))
         .addStringOption(o => o.setName('valor').setDescription('Nuevo valor').setRequired(true)))
     .addSubcommand(sub => sub.setName('panel').setDescription('Panel visual para configurar módulos (Canales, Roles, etc.)'))
@@ -91,9 +93,10 @@ module.exports = {
                   { name: '📝 Canal Logs', value: config.logChannelId ? `<#${config.logChannelId}>` : '`No configurado`', inline: true },
                   { name: '📊 Nivel Logs', value: `\`Nivel ${config.logLevel || 1} (${levelNames[config.logLevel || 1]})\``, inline: true },
                   { name: '👤 Rol Automático', value: config.autoRoleId ? `<@&${config.autoRoleId}>` : '`No configurado`', inline: true },
-                  { name: '🖼️ Fondo Bienvenida', value: config.welcomeBackground ? `[Ver Imagen](${config.welcomeBackground})` : '`Por defecto`', inline: true },
+                  { name: '🖼️ Fondo Imagen', value: config.welcomeBackground ? `[Ver Imagen](${config.welcomeBackground})` : '`Por defecto`', inline: true },
+                  { name: '✍️ Texto Imagen', value: `\`${config.welcomeBannerText || 'BIENVENID@'}\``, inline: true },
                   { name: '👋 Canal Bienvenida', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '`No configurado`', inline: true },
-                  { name: '📜 Mensaje', value: `\`${config.welcomeMessage}\``, inline: false }
+                  { name: '📜 Mensaje Chat', value: `\`${config.welcomeMessage}\``, inline: false }
               ],
               thumbnail: interaction.guild.iconURL({ dynamic: true })
           });
@@ -106,8 +109,13 @@ module.exports = {
           
           if (key === 'prefix') config.prefix = val.slice(0, 5);
           else if (key === 'welcomeMessage') config.welcomeMessage = val.slice(0, 300);
+          else if (key === 'welcomeBannerText') config.welcomeBannerText = val.slice(0, 20).toUpperCase();
           else if (key === 'welcomeBackground') {
             if (!val.startsWith('http')) return interaction.reply({ content: '❌ Debes proporcionar una URL válida para la imagen.', flags: [MessageFlags.Ephemeral] });
+            // Verificación básica de extensión
+            if (!/\.(jpg|jpeg|png|webp|gif)$/i.test(val)) {
+                return interaction.reply({ content: '❌ La URL debe ser un enlace directo a una imagen (.jpg, .png, .webp, .gif).', flags: [MessageFlags.Ephemeral] });
+            }
             config.welcomeBackground = val;
           }
           
@@ -350,6 +358,7 @@ async function handleInteractiveSetup(interaction, config, guildId) {
             { label: 'Canal de Logs', value: 'log', emoji: '📝' },
             { label: 'Nivel de Logs', value: 'log_level', emoji: '📊' },
             { label: 'Canal de Bienvenidas', value: 'welcome', emoji: '👋' },
+            { label: 'Texto en Imagen', value: 'welcome_text', emoji: '✍️' },
             { label: 'Rol Automático', value: 'autorole', emoji: '👤' },
             { label: 'Cerrar Panel', value: 'close', emoji: '❌' }
         ]);
@@ -386,6 +395,22 @@ async function handleInteractiveSetup(interaction, config, guildId) {
                 } else if (val === 'welcome') {
                     text = 'Selecciona el canal para las **Bienvenidas**:';
                     component = new ChannelSelectMenuBuilder().setCustomId('sel_welcome').setPlaceholder('Elegir canal').addChannelTypes([ChannelType.GuildText]);
+                } else if (val === 'welcome_text') {
+                    await i.update({ 
+                        content: 'Escribe el texto que aparecerá en la imagen de bienvenida (Máx 20 caracteres):', 
+                        embeds: [], 
+                        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Cancelar').setStyle(ButtonStyle.Danger))] 
+                    });
+
+                    const msgCol = interaction.channel.createMessageCollector({ filter: m => m.author.id === interaction.user.id, time: 30000, max: 1 });
+                    msgCol.on('collect', async m => {
+                        const newText = m.content.substring(0, 20).toUpperCase();
+                        config.welcomeBannerText = newText;
+                        await DataManager.saveFile(`configs/${guildId}.json`, config);
+                        if (m.deletable) m.delete().catch(() => {});
+                        await interaction.editReply({ content: `✅ Texto de imagen actualizado a: \`${newText}\``, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('cfg_back').setLabel('Continuar').setStyle(ButtonStyle.Success))] });
+                    });
+                    return;
                 } else if (val === 'autorole') {
                     text = 'Selecciona el **Rol Automático** para nuevos miembros:';
                     component = new RoleSelectMenuBuilder().setCustomId('sel_role').setPlaceholder('Elegir rol');
