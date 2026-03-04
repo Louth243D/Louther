@@ -358,11 +358,13 @@ async function handleInteractiveSetup(interaction, config, guildId) {
     const response = await interaction.reply({ 
         embeds: [createEmbed('info', '⚙️ Panel de Configuración', 'Selecciona una opción para configurar los canales y roles del bot.')], 
         components: [row], 
-        flags: [MessageFlags.Ephemeral], 
-        withResponse: true 
+        flags: [MessageFlags.Ephemeral]
     });
 
-    const collector = response.resource?.message.createMessageComponentCollector({ time: 120000 });
+    const collector = interaction.channel.createMessageComponentCollector({ 
+        filter: i => i.user.id === interaction.user.id,
+        time: 120000 
+    });
 
     collector.on('collect', async i => {
         if (i.user.id !== interaction.user.id) return i.reply({ content: 'No puedes usar este panel.', flags: [MessageFlags.Ephemeral] });
