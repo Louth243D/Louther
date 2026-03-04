@@ -1,5 +1,4 @@
 const Genius = require('genius-lyrics');
-const Client = new Genius.Client(process.env.GENIUS_API_KEY);
 
 /**
  * Busca la letra de una canción en Genius.
@@ -8,6 +7,13 @@ const Client = new Genius.Client(process.env.GENIUS_API_KEY);
  */
 async function getSongLyrics(query) {
     try {
+        const token = process.env.GENIUS_API_KEY?.trim();
+        if (!token) {
+            console.error('[LyricsUtil] No se encontró GENIUS_API_KEY.');
+            return null;
+        }
+
+        const Client = new Genius.Client(token);
         const searches = await Client.songs.search(query);
         if (searches.length === 0) return null;
 
