@@ -65,7 +65,15 @@ module.exports = {
                   return interaction.editReply({ content: '❌ No pude extraer la información de la canción.' });
               }
 
-              const query = `${songField.value} ${authorField.value}`.replace(/`/g, '');
+              // Limpiar el título para mejorar la búsqueda en Genius
+              let cleanTitle = songField.value.replace(/`/g, '')
+                  .replace(/\(.*\)|\[.*\]/g, '') // Eliminar todo lo que esté entre paréntesis o corchetes
+                  .replace(/official video|music video|m\/v|mv|lyric video|video oficial/gi, '') // Eliminar etiquetas comunes de YT
+                  .trim();
+              
+              const cleanAuthor = authorField.value.replace(/`/g, '').trim();
+              const query = `${cleanAuthor} ${cleanTitle}`;
+
               const lyricsChunks = await getSongLyrics(query);
 
               if (!lyricsChunks || lyricsChunks.length === 0) {
