@@ -3,9 +3,10 @@ const Genius = require('genius-lyrics');
 /**
  * Busca la letra de una canción en Genius.
  * @param {string} query - Nombre de la canción y autor.
+ * @param {string} artistName - Nombre del artista original para validar.
  * @returns {Promise<string[]|null>} Array de fragmentos de letra o null si no se encuentra.
  */
-async function getSongLyrics(query) {
+async function getSongLyrics(query, artistName) {
     try {
         const token = process.env.GENIUS_API_KEY?.trim();
         if (!token) {
@@ -13,11 +14,26 @@ async function getSongLyrics(query) {
             return null;
         }
 
+        console.log(`[LyricsUtil] Buscando: "${query}" (Artista esperado: ${artistName})`);
+
         const Client = new Genius.Client(token);
         const searches = await Client.songs.search(query);
         if (searches.length === 0) return null;
 
-        const song = searches[0];
+        // Intentar encontrar un resultado que coincida mejor con el artista
+        let song = searches.find(s => 
+            s.artist.name.toLowerCase().includes(artistName.toLowerCase()) ||
+            artistName.toLowerCase().includes(s.artist.name.toLowerCase())
+        );
+
+        // Si no hay coincidencia clara de artista, pero el primer resultado parece ser la canción (por título), lo usamos.
+        if (!song) {
+            song = searches[0];
+            console.warn(`[LyricsUtil] No hubo coincidencia exacta de artista. Usando primer resultado: ${song.title} por ${song.artist.name}`);
+        } else {
+            console.log(`[LyricsUtil] Coincidencia encontrada: ${song.title} por ${song.artist.name}`);
+        }
+
         const lyrics = await song.lyrics();
 
         if (!lyrics) return null;

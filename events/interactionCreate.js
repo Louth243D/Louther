@@ -72,9 +72,13 @@ module.exports = {
                   .trim();
               
               const cleanAuthor = authorField.value.replace(/`/g, '').trim();
-              const query = `${cleanAuthor} ${cleanTitle}`;
+              
+              // Si el título ya contiene al autor, no lo repetimos para no confundir a la API
+              const query = cleanTitle.toLowerCase().includes(cleanAuthor.toLowerCase()) 
+                  ? cleanTitle 
+                  : `${cleanAuthor} ${cleanTitle}`;
 
-              const lyricsChunks = await getSongLyrics(query);
+              const lyricsChunks = await getSongLyrics(query, cleanAuthor);
 
               if (!lyricsChunks || lyricsChunks.length === 0) {
                   return interaction.editReply({ embeds: [createEmbed('warn', 'Lyrics No Encontradas', `No se encontró la letra para: **${query}**`)] });
