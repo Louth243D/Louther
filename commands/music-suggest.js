@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, MessageFlags } = require('discord.js');
 const { createEmbed } = require('../utils/embed.js');
 const DataManager = require('../utils/dataManager.js');
-const { setupGuildCron, stopGuildCron } = require('../utils/musicCron.js');
+const { setupGuildCron, stopGuildCron, sendMusicSuggestion } = require('../utils/musicCron.js');
 const { getRandomMusicSuggestion } = require('../utils/youtubeUtil.js');
 const { ActionRowBuilder: ActionRow, ButtonBuilder: Button, ButtonStyle } = require('discord.js');
 
@@ -22,7 +22,10 @@ module.exports = {
                 .setDescription('Muestra la configuración actual'))
         .addSubcommand(sub => 
             sub.setName('test')
-                .setDescription('Realiza una prueba inmediata del sistema de sugerencias')),
+                .setDescription('Realiza una prueba inmediata del sistema de sugerencias'))
+        .addSubcommand(sub => 
+            sub.setName('force-run')
+                .setDescription('Ejecuta la lógica del sistema automático inmediatamente (para pruebas)')),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -37,6 +40,19 @@ module.exports = {
         }
 
         switch (subcommand) {
+            case 'force-run': {
+                const config = await DataManager.getFile('musicSuggest.json', {});
+                const guildConfig = config[guildId];
+
+                if (!guildConfig || !guildConfig.enabled) {
+                    return interaction.reply({ embeds: [createEmbed('error', 'Sistema No Configurado', 'Primero debes configurar el sistema con `/music-suggest set`.')], flags: [MessageFlags.Ephemeral] });
+                }
+
+                await interaction.reply({ content: '⏳ Ejecutando sistema automático...', flags: [MessageFlags.Ephemeral] });
+                await sendMusicSuggestion(interaction.client, guildId, guildConfig);
+                return interaction.editReply({ content: '✅ Sistema ejecutado. Revisa el canal configurado.' });
+            }
+
             case 'test': {
                 await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
                 

@@ -46,52 +46,62 @@ function setupGuildCron(client, guildId, guildConfig) {
         const cronTime = `${minute} ${hour} * * *`;
 
         const job = cron.schedule(cronTime, async () => {
-            try {
-                const guild = client.guilds.cache.get(guildId);
-                if (!guild) return;
-
-                const channel = guild.channels.cache.get(guildConfig.channelId);
-                if (!channel) {
-                    console.log(`[MusicCron] Canal no encontrado en ${guild.name}. Desactivando sistema.`);
-                    guildConfig.enabled = false;
-                    const config = await DataManager.getFile('musicSuggest.json', {});
-                    config[guildId] = guildConfig;
-                    await DataManager.saveFile('musicSuggest.json', config);
-                    stopGuildCron(guildId);
-                    return;
-                }
-
-                // Obtener sugerencia musical
-                const suggestion = await getRandomMusicSuggestion();
-                if (!suggestion) return;
-
-                const embed = createEmbed('info', '🎵 Sugerencia Musical del Día', '¡Aquí tienes una canción recomendada para hoy!', {
-                    fields: [
-                        { name: '🎶 Canción', value: `\`${suggestion.title}\``, inline: false },
-                        { name: '🎤 Autor', value: `\`${suggestion.author}\``, inline: true },
-                        { name: '🔗 Enlace', value: `[Ver en YouTube](${suggestion.url})`, inline: true }
-                    ],
-                    thumbnail: suggestion.thumbnail,
-                    color: '#5865F2' // Color azul profesional
-                });
-
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('music_lyrics')
-                        .setLabel('Ver Lyrics')
-                        .setStyle(ButtonStyle.Primary)
-                );
-
-                await channel.send({ embeds: [embed], components: [row] });
-            } catch (error) {
-                console.error(`[MusicCron] Error ejecutando sugerencia en ${guildId}:`, error.message);
-            }
+            await sendMusicSuggestion(client, guildId, guildConfig);
         });
 
         jobs.push(job);
     });
 
     activeJobs.set(guildId, jobs);
+}
+
+/**
+ * Ejecuta la lógica de enviar una sugerencia musical para un servidor específico.
+ * @param {Client} client 
+ * @param {string} guildId 
+ * @param {Object} guildConfig 
+ */
+async function sendMusicSuggestion(client, guildId, guildConfig) {
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return;
+
+        const channel = guild.channels.cache.get(guildConfig.channelId);
+        if (!channel) {
+            console.log(`[MusicCron] Canal no encontrado en ${guild.name}. Desactivando sistema.`);
+            guildConfig.enabled = false;
+            const config = await DataManager.getFile('musicSuggest.json', {});
+            config[guildId] = guildConfig;
+            await DataManager.saveFile('musicSuggest.json', config);
+            stopGuildCron(guildId);
+            return;
+        }
+
+        // Obtener sugerencia musical
+        const suggestion = await getRandomMusicSuggestion();
+        if (!suggestion) return;
+
+        const embed = createEmbed('info', '🎵 Sugerencia Musical del Día', '¡Aquí tienes una canción recomendada para hoy!', {
+            fields: [
+                { name: '🎶 Canción', value: `\`${suggestion.title}\``, inline: false },
+                { name: '🎤 Autor', value: `\`${suggestion.author}\``, inline: true },
+                { name: '🔗 Enlace', value: `[Ver en YouTube](${suggestion.url})`, inline: true }
+            ],
+            thumbnail: suggestion.thumbnail,
+            color: '#5865F2' // Color azul profesional
+        });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('music_lyrics')
+                .setLabel('Ver Lyrics')
+                .setStyle(ButtonStyle.Primary)
+        );
+
+        await channel.send({ embeds: [embed], components: [row] });
+    } catch (error) {
+        console.error(`[MusicCron] Error ejecutando sugerencia en ${guildId}:`, error.message);
+    }
 }
 
 /**
@@ -105,4 +115,4 @@ function stopGuildCron(guildId) {
     }
 }
 
-module.exports = { initMusicCron, setupGuildCron, stopGuildCron };
+module.exports = { initMusicCron, setupGuildCron, stopGuildCron, sendMusicSuggestion };

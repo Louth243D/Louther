@@ -1,7 +1,12 @@
 const YouTube = require('simple-youtube-api');
 const youtube = new YouTube(process.env.YOUTUBE_API_KEY);
 
-const keywords = ["top hits", "rock clásico", "pop 2024", "indie music", "rap trending", "lofi hip hop", "electronic dance", "latin hits 2024", "r&b soul"];
+const keywords = [
+    "top hits music video", "rock clásico official", "pop 2024 music", 
+    "indie music official", "rap trending music video", "lofi hip hop beats", 
+    "electronic dance music", "latin hits 2024 official", "r&b soul music",
+    "k-pop official mv", "heavy metal official", "jazz classics music"
+];
 
 /**
  * Busca una canción aleatoria en YouTube basada en keywords musicales.
@@ -10,11 +15,19 @@ const keywords = ["top hits", "rock clásico", "pop 2024", "indie music", "rap t
 async function getRandomMusicSuggestion() {
     try {
         const keyword = keywords[Math.floor(Math.random() * keywords.length)];
-        const results = await youtube.searchVideos(keyword, 10);
+        // Añadimos 'music' a la búsqueda para forzar resultados musicales
+        const results = await youtube.searchVideos(keyword, 15);
         
         if (!results || results.length === 0) return null;
 
-        const video = results[Math.floor(Math.random() * results.length)];
+        // Filtrar resultados que parezcan noticias o directos (muy básico)
+        const musicVideos = results.filter(v => {
+            const title = v.title.toLowerCase();
+            return !title.includes('news') && !title.includes('noticias') && !title.includes('live') && !title.includes('directo');
+        });
+
+        const finalResults = musicVideos.length > 0 ? musicVideos : results;
+        const video = finalResults[Math.floor(Math.random() * finalResults.length)];
         
         // Obtener detalles adicionales para el autor y thumbnail de alta calidad
         const fullVideo = await youtube.getVideoByID(video.id);
