@@ -1,0 +1,13 @@
+{
+  "prefix": "!",
+  "logChannelId": "1478287129195970723",
+  "logLevel": 1,
+  "persistentLogIds": {},
+  "welcomeChannelId": "1478287116340432981",
+  "welcomeMessage": "¡Bienvenido/a {user} a {server}!",
+  "welcomeBackground": "https://i.blogs.es/5589e6/stardust-crusaders/1366_2000.jpeg",
+  "welcomeBannerText": "HOLAAAA",
+  "rules": "AAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "autoRoleId": null,
+  "levelRewards": {}
+}
